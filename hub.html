@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>교수 통합 포털 · Smart Submission</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+    body { font-family:'Noto Sans KR',sans-serif; background:#f0f2fa; }
+    #toast { transition:opacity .3s, transform .3s; }
+    #toast.hide { opacity:0; transform:translateY(8px) scale(.97); pointer-events:none; }
+    .stat-card, .nav-card { transition:transform .15s, box-shadow .15s; }
+    .stat-card:hover { transform:translateY(-2px); }
+    .nav-card:hover { transform:translateY(-3px); box-shadow:0 10px 25px -8px rgba(99,102,241,.3); }
+    th { position:sticky; top:0; background:#f8fafc; z-index:1; }
+</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen">
+
+<script>
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbw9k-9lYg9GivdUEG6pPODPxP5S4B5tONDT3q33GcO50vMAbymQ1v60O6xZA9m626KwUw/exec';
+</script>
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="p-2 bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-xl shadow-md shadow-indigo-200 shrink-0">
+                <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-lg font-bold text-slate-900 tracking-tight">교수 통합 포털</h1>
+                <p class="text-xs text-slate-500 truncate">전체 시스템 모니터링 + 바로가기</p>
+            </div>
+        </div>
+        <div id="header-actions" class="hidden items-center gap-1.5 shrink-0">
+            <span id="hub-time" class="text-[10px] text-slate-400 hidden sm:inline"></span>
+            <button onclick="loadOverview()" class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg cursor-pointer" title="새로고침">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-red-500 transition cursor-pointer" title="로그아웃">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<div id="toast" class="hide fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2 min-w-max">
+    <i id="toast-icon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-msg">완료</span>
+</div>
+
+<!-- 로그인 -->
+<div id="login-screen" class="fixed inset-0 bg-slate-100 flex items-center justify-center z-40 p-4">
+    <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+        <div class="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div class="p-2 bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-xl">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h2 class="text-sm font-bold">교수 통합 포털 로그인</h2>
+                <p class="text-[10px] text-slate-500">한 번 로그인하면 모든 관리 페이지 접근</p>
+            </div>
+        </div>
+        <input id="pw-input" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition mb-3">
+        <button onclick="login()" class="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2">
+            <i data-lucide="log-in" class="w-4 h-4"></i> 로그인
+        </button>
+    </div>
+</div>
+
+<main id="main-area" class="hidden max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- 전체 요약 -->
+    <section>
+        <h2 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-1.5">
+            <i data-lucide="activity" class="w-3.5 h-3.5"></i> 전체 현황 (모든 과목 합계)
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><i data-lucide="book" class="w-3 h-3"></i> 과목</div>
+                <div class="text-2xl font-bold text-slate-800 mt-1" id="t-subjects">-</div>
+            </div>
+            <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-1"><i data-lucide="users" class="w-3 h-3"></i> 학생</div>
+                <div class="text-2xl font-bold text-indigo-600 mt-1" id="t-students">-</div>
+            </div>
+            <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1"><i data-lucide="upload" class="w-3 h-3"></i> 제출</div>
+                <div class="text-2xl font-bold text-emerald-600 mt-1" id="t-submissions">-</div>
+            </div>
+            <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="text-[10px] font-bold text-sky-500 uppercase flex items-center gap-1"><i data-lucide="clipboard-list" class="w-3 h-3"></i> 설문응답</div>
+                <div class="text-2xl font-bold text-sky-600 mt-1" id="t-responses">-</div>
+            </div>
+            <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><i data-lucide="github" class="w-3 h-3"></i> 저장소</div>
+                <div class="text-2xl font-bold text-slate-700 mt-1" id="t-repos">-</div>
+            </div>
+            <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="text-[10px] font-bold text-amber-500 uppercase flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> 다운로드</div>
+                <div class="text-2xl font-bold text-amber-600 mt-1" id="t-downloads">-</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Drive 용량 -->
+    <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+            <h3 class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <i data-lucide="hard-drive" class="w-3.5 h-3.5"></i> 제출 시스템 저장 용량 (Drive)
+            </h3>
+            <span id="storage-label" class="text-xs font-bold text-slate-700">-</span>
+        </div>
+        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div id="storage-bar" class="h-full bg-emerald-500 transition-all" style="width:0%"></div>
+        </div>
+        <p id="storage-detail" class="text-[10px] text-slate-400 mt-1.5">한도 조정은 [교수 제출 대시보드]에서 가능</p>
+    </section>
+
+    <!-- 바로가기 -->
+    <section>
+        <h2 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-1.5">
+            <i data-lucide="grid-3x3" class="w-3.5 h-3.5"></i> 바로가기
+        </h2>
+        <p class="text-[11px] text-slate-500 mb-2">🔒 교수 관리 페이지 (이미 로그인됨 — 클릭 시 자동 인증)</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <a href="./" class="nav-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm block">
+                <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl w-fit mb-2"><i data-lucide="layers" class="w-5 h-5"></i></div>
+                <p class="text-sm font-bold text-slate-800">조편성기</p>
+                <p class="text-[10px] text-slate-500 mt-0.5">팀 편성·백엔드 동기화</p>
+            </a>
+            <a href="admin.html" class="nav-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm block">
+                <div class="p-2 bg-emerald-100 text-emerald-600 rounded-xl w-fit mb-2"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></div>
+                <p class="text-sm font-bold text-slate-800">제출 대시보드</p>
+                <p class="text-[10px] text-slate-500 mt-0.5">제출 모니터링·용량 조정</p>
+            </a>
+            <a href="survey_admin.html" class="nav-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm block">
+                <div class="p-2 bg-sky-100 text-sky-600 rounded-xl w-fit mb-2"><i data-lucide="clipboard-list" class="w-5 h-5"></i></div>
+                <p class="text-sm font-bold text-slate-800">설문 관리</p>
+                <p class="text-[10px] text-slate-500 mt-0.5">설문 작성·결과 분석</p>
+            </a>
+            <a href="repo_admin.html" class="nav-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm block">
+                <div class="p-2 bg-slate-200 text-slate-700 rounded-xl w-fit mb-2"><i data-lucide="github" class="w-5 h-5"></i></div>
+                <p class="text-sm font-bold text-slate-800">GitHub 관리</p>
+                <p class="text-[10px] text-slate-500 mt-0.5">팀 저장소 등록·모니터링</p>
+            </a>
+        </div>
+        <p class="text-[11px] text-slate-500 mb-2">👥 학생 페이지 (공지·미리보기용 — 학생 인증 별도)</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <a href="submit.html" target="_blank" class="nav-card bg-slate-50 p-3 rounded-xl border border-slate-200 block">
+                <p class="text-xs font-bold text-slate-700 flex items-center gap-1"><i data-lucide="upload-cloud" class="w-3.5 h-3.5 text-emerald-500"></i> 과제 제출</p>
+                <p class="text-[10px] text-slate-400 mt-0.5 truncate">submit.html</p>
+            </a>
+            <a href="survey.html" target="_blank" class="nav-card bg-slate-50 p-3 rounded-xl border border-slate-200 block">
+                <p class="text-xs font-bold text-slate-700 flex items-center gap-1"><i data-lucide="clipboard-list" class="w-3.5 h-3.5 text-sky-500"></i> 설문 응답</p>
+                <p class="text-[10px] text-slate-400 mt-0.5 truncate">survey.html</p>
+            </a>
+            <a href="repo.html" target="_blank" class="nav-card bg-slate-50 p-3 rounded-xl border border-slate-200 block">
+                <p class="text-xs font-bold text-slate-700 flex items-center gap-1"><i data-lucide="github" class="w-3.5 h-3.5 text-slate-600"></i> GitHub 저장소</p>
+                <p class="text-[10px] text-slate-400 mt-0.5 truncate">repo.html</p>
+            </a>
+            <a href="guide.html" target="_blank" class="nav-card bg-slate-50 p-3 rounded-xl border border-slate-200 block">
+                <p class="text-xs font-bold text-slate-700 flex items-center gap-1"><i data-lucide="book-open" class="w-3.5 h-3.5 text-violet-500"></i> 사용 가이드</p>
+                <p class="text-[10px] text-slate-400 mt-0.5 truncate">guide.html</p>
+            </a>
+        </div>
+        <div class="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center gap-2">
+            <i data-lucide="external-link" class="w-3.5 h-3.5 text-amber-600 shrink-0"></i>
+            <p class="text-[11px] text-amber-800">③ 협업게시판(발표 자료 공개)은 별도 시스템 →
+                <a href="https://script.google.com/macros/s/AKfycbz9o-9fIRA21I9YLYFuvGPhlLY6LtrRBR4yyzFJGFpfRmBM_4X9_TKo0SebDmOuLyMz/exec" target="_blank" rel="noopener" class="font-bold underline">바로가기</a></p>
+        </div>
+    </section>
+
+    <!-- 학기 데이터 클리어 (위험 구역) -->
+    <section class="bg-red-50 border border-red-200 rounded-2xl overflow-hidden">
+        <button onclick="toggleClear()" class="w-full px-4 py-3 flex items-center justify-between hover:bg-red-100/50 transition cursor-pointer text-left">
+            <span class="text-xs font-bold text-red-700 flex items-center gap-1.5">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> 새 학기 준비 — 데이터 클리어
+            </span>
+            <i data-lucide="chevron-down" id="clear-chev" class="w-4 h-4 text-red-500 transition-transform"></i>
+        </button>
+        <div id="clear-panel" class="hidden px-4 pb-4 pt-1 border-t border-red-200">
+            <p class="text-[11px] text-red-700 leading-relaxed mb-3">
+                실행 전 <b>자동 백업</b>(Drive `_backups/`)이 먼저 생성됩니다. Drive의 제출 파일은 <b>보관</b>되고 시트 기록만 비웁니다.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                <div class="bg-white border border-red-200 rounded-lg p-2.5">
+                    <p class="text-[10px] font-bold text-red-600 mb-1">🗑 비워지는 것</p>
+                    <p class="text-[10px] text-slate-600 leading-relaxed">제출 기록 · 설문/응답 · 저장소 매핑 · 마감일 · 다운로드 로그</p>
+                </div>
+                <div class="bg-white border border-emerald-200 rounded-lg p-2.5">
+                    <p class="text-[10px] font-bold text-emerald-600 mb-1">✅ 보존되는 것</p>
+                    <p class="text-[10px] text-slate-600 leading-relaxed">과목 · 설정/비밀번호 · 변경 이력 · archive 백업 · Drive 파일</p>
+                </div>
+            </div>
+            <label class="inline-flex items-center gap-2 text-[11px] text-slate-700 mb-3">
+                <input type="checkbox" id="clear-students"> 학생 명단(`students`)도 함께 비우기 (전면 새 학기 시 체크)
+            </label>
+            <div class="flex items-center gap-2">
+                <input id="clear-confirm" type="text" placeholder="확인을 위해 CLEAR 입력" class="flex-1 px-3 py-2 bg-white border border-red-300 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-red-400">
+                <button onclick="runClear()" class="py-2 px-4 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition cursor-pointer inline-flex items-center gap-1.5">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 클리어 실행
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-2">💡 새 학기: 클리어 후 subjects 시트에서 과목 정보만 새 학기에 맞게 수정하면 됩니다.</p>
+        </div>
+    </section>
+
+    <!-- 과목별 현황 -->
+    <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <h3 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-1.5">
+            <i data-lucide="table-2" class="w-3.5 h-3.5"></i> 과목별 현황
+        </h3>
+        <div class="overflow-x-auto border border-slate-100 rounded-xl">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase">
+                    <tr>
+                        <th class="text-left px-3 py-2 font-bold">과목</th>
+                        <th class="text-center px-3 py-2 font-bold">학생</th>
+                        <th class="text-center px-3 py-2 font-bold">팀</th>
+                        <th class="text-center px-3 py-2 font-bold">GitHub 등록</th>
+                        <th class="text-center px-3 py-2 font-bold">제출</th>
+                        <th class="text-center px-3 py-2 font-bold">설문</th>
+                        <th class="text-center px-3 py-2 font-bold">응답</th>
+                    </tr>
+                </thead>
+                <tbody id="course-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+let token = null;
+let toastTimer = null;
+const TOKEN_TTL_MS = 4 * 60 * 60 * 1000;
+const $ = id => document.getElementById(id);
+
+function showToast(msg, type='ok') {
+    clearTimeout(toastTimer);
+    const t=$('toast'), ico=$('toast-icon'), txt=$('toast-msg');
+    ico.setAttribute('data-lucide', type==='warn'?'alert-triangle':type==='err'?'x-circle':'check-circle');
+    ico.className = `w-4 h-4 ${type==='warn'?'text-amber-400':type==='err'?'text-red-400':'text-emerald-400'}`;
+    txt.textContent = msg; lucide.createIcons({nodes:[ico]});
+    t.classList.remove('hide');
+    toastTimer = setTimeout(() => t.classList.add('hide'), 3500);
+}
+
+async function api(action, params={}) {
+    const url = new URL(APPS_URL);
+    url.searchParams.set('action', action);
+    Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+    const r = await fetch(url.toString(), {method:'GET', redirect:'follow'});
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || '서버 오류');
+    return j.data;
+}
+
+function isTokenExpired() {
+    const at = parseInt(sessionStorage.getItem('admin_token_at') || '0');
+    return !at || (Date.now() - at) > TOKEN_TTL_MS;
+}
+
+async function login() {
+    const pw = $('pw-input').value.trim();
+    if (!pw) return showToast('비밀번호를 입력하세요', 'warn');
+    try {
+        const r = await api('adminLogin', {password: pw});
+        token = r.token;
+        sessionStorage.setItem('admin_token', token);
+        sessionStorage.setItem('admin_token_at', String(Date.now()));
+        onLoginSuccess();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function logout() {
+    token = null;
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token_at');
+    location.reload();
+}
+
+function onLoginSuccess() {
+    $('login-screen').classList.add('hidden');
+    $('main-area').classList.remove('hidden');
+    $('header-actions').classList.remove('hidden');
+    $('header-actions').classList.add('flex');
+    loadOverview();
+}
+
+/* 기존 API만 조합해 전체 현황 집계 (백엔드 변경 0 — hub는 독립 작동) */
+async function loadOverview() {
+    showToast('현황 불러오는 중…');
+    try {
+        const [subjects, storage] = await Promise.all([
+            api('getSubjects', {}),
+            api('adminGetStorage', {token})
+        ]);
+
+        // 과목별로 기존 API 병렬 호출
+        const perSubject = await Promise.all(subjects.map(async s => {
+            const [stats, repos, surveys] = await Promise.all([
+                api('adminGetStats',    {token, subjectKey: s.subjectKey}),
+                api('adminGetAllRepos', {token, subjectKey: s.subjectKey}),
+                api('adminListSurveys', {token, subjectKey: s.subjectKey})
+            ]);
+            const teams = repos.length;
+            const reposRegistered = repos.filter(r => r.registered).length;
+            const responses = surveys.reduce((sum, sv) => sum + (Number(sv.responseCount) || 0), 0);
+            return {
+                name: s.displayName,
+                year: s.year, semester: s.semester,
+                students:        (stats.perStudent || []).length,
+                teams,
+                reposRegistered,
+                submissions:     stats.totalSubmissions || 0,
+                downloads:       stats.totalDownloads || 0,
+                surveys:         surveys.length,
+                responses
+            };
+        }));
+        perSubject.sort((a,b) => (b.year-a.year) || (b.semester-a.semester) || a.name.localeCompare(b.name));
+
+        // 합계 집계
+        const totals = perSubject.reduce((t, c) => ({
+            students: t.students + c.students,
+            submissions: t.submissions + c.submissions,
+            responses: t.responses + c.responses,
+            repos: t.repos + c.reposRegistered,
+            downloads: t.downloads + c.downloads
+        }), {students:0, submissions:0, responses:0, repos:0, downloads:0});
+
+        $('t-subjects').textContent    = subjects.length;
+        $('t-students').textContent    = totals.students;
+        $('t-submissions').textContent = totals.submissions;
+        $('t-responses').textContent   = totals.responses;
+        $('t-repos').textContent       = totals.repos;
+        $('t-downloads').textContent   = totals.downloads;
+
+        // Drive 용량
+        const s = storage;
+        if (s.unlimited) {
+            $('storage-label').textContent = `${s.usedGB.toFixed(1)} GB 사용 (무제한)`;
+            $('storage-bar').style.width = '0%';
+        } else {
+            const pct = Math.min(100, s.percent);
+            $('storage-label').textContent = `${s.usedGB.toFixed(1)} GB / ${s.quotaGB.toLocaleString()} GB (${pct.toFixed(1)}%)`;
+            $('storage-bar').style.width = pct + '%';
+            $('storage-bar').className = 'h-full transition-all ' +
+                (pct >= 95 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-emerald-500');
+        }
+
+        // 과목별 테이블
+        const tb = $('course-tbody');
+        if (!perSubject.length) {
+            tb.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-6">등록된 과목이 없습니다</td></tr>';
+        } else {
+            tb.innerHTML = perSubject.map(c => {
+                const repoRate = c.teams ? Math.round(c.reposRegistered/c.teams*100) : 0;
+                const repoColor = repoRate>=100?'text-emerald-600':repoRate>=50?'text-amber-600':'text-red-500';
+                return `<tr class="hover:bg-slate-50">
+                    <td class="px-3 py-2 font-bold text-slate-800">${escapeHtml(c.name)}</td>
+                    <td class="px-3 py-2 text-center text-slate-600">${c.students}</td>
+                    <td class="px-3 py-2 text-center text-slate-600">${c.teams}</td>
+                    <td class="px-3 py-2 text-center"><span class="${repoColor} font-bold">${c.reposRegistered}/${c.teams}</span> <span class="text-[10px] text-slate-400">(${repoRate}%)</span></td>
+                    <td class="px-3 py-2 text-center text-emerald-600 font-bold">${c.submissions}</td>
+                    <td class="px-3 py-2 text-center text-slate-600">${c.surveys}</td>
+                    <td class="px-3 py-2 text-center text-sky-600 font-bold">${c.responses}</td>
+                </tr>`;
+            }).join('');
+        }
+        $('hub-time').textContent = '갱신 ' + new Date().toLocaleString('ko-KR');
+        lucide.createIcons();
+        showToast('현황 업데이트 완료');
+    } catch(e) {
+        showToast(e.message, 'err');
+        if (String(e.message).includes('인증')) setTimeout(logout, 1500);
+    }
+}
+
+/* ── 학기 데이터 클리어 ── */
+function toggleClear() {
+    const p = $('clear-panel'), c = $('clear-chev');
+    const hidden = p.classList.contains('hidden');
+    p.classList.toggle('hidden', !hidden);
+    if (c) c.style.transform = hidden ? 'rotate(180deg)' : '';
+    if (hidden) lucide.createIcons();
+}
+
+async function runClear() {
+    const confirmText = $('clear-confirm').value.trim();
+    if (confirmText !== 'CLEAR') return showToast("입력란에 'CLEAR'를 정확히 입력하세요", 'warn');
+    const withStudents = $('clear-students').checked;
+    const msg = withStudents
+        ? '⚠ 제출·설문·매핑·마감일·다운로드 + 학생 명단까지 모두 비웁니다.\n과목·설정·이력·Drive 파일은 보존됩니다.\n(자동 백업 후 진행)\n\n정말 실행할까요?'
+        : '⚠ 제출·설문·매핑·마감일·다운로드를 비웁니다.\n과목·명단·설정·Drive 파일은 보존됩니다.\n(자동 백업 후 진행)\n\n정말 실행할까요?';
+    if (!confirm(msg)) return;
+
+    showToast('백업 후 클리어 중… (잠시 기다려 주세요)');
+    try {
+        const r = await api('adminClearTerm', {
+            token, confirm: 'CLEAR', scope: withStudents ? 'full' : 'standard'
+        });
+        const lines = [
+            `제출 ${r.submissions||0}`, `응답 ${r.responses||0}`, `설문 ${r.surveys||0}`,
+            `매핑 ${r.teamRepos||0}`, `마감 ${r.weekDeadlines||0}`
+        ];
+        if (r.students !== undefined) lines.push(`명단 ${r.students}`);
+        showToast(`✓ 클리어 완료 — ${lines.join(' · ')}건 삭제 (백업: ${r.backup || '실패'})`);
+        $('clear-confirm').value = '';
+        $('clear-students').checked = false;
+        toggleClear();
+        await loadOverview();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+
+/* INIT */
+lucide.createIcons();
+const savedToken = sessionStorage.getItem('admin_token');
+if (savedToken && !isTokenExpired()) {
+    token = savedToken;
+    onLoginSuccess();
+} else if (savedToken) {
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token_at');
+    showToast('세션 만료 — 다시 로그인', 'warn');
+}
+</script>
+</body>
+</html>

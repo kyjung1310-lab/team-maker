@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>과제 제출 · Smart Submission</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    body { font-family:'Noto Sans KR',sans-serif; background:#f0f2fa; }
+    #toast { transition:opacity .3s, transform .3s; }
+    #toast.hide { opacity:0; transform:translateY(8px) scale(.97); pointer-events:none; }
+    .file-drag-on { border-color:#6366f1 !important; background:#eef2ff !important; }
+    .step-card { transition:opacity .3s; }
+    .step-card.locked { opacity:.45; pointer-events:none; }
+    .week-btn { transition:all .15s; }
+    .week-btn.selected { background:#10b981 !important; color:white !important; border-color:#059669 !important; }
+    select:disabled { background:#f1f5f9; color:#94a3b8; cursor:not-allowed; }
+</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen">
+
+<script>
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbw9k-9lYg9GivdUEG6pPODPxP5S4B5tONDT3q33GcO50vMAbymQ1v60O6xZA9m626KwUw/exec';
+</script>
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-emerald-600 text-white rounded-xl shadow-md shadow-emerald-200">
+                <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 tracking-tight">과제 제출</h1>
+                <p class="text-xs text-slate-500">년도·학기·과목·팀·본인 5단계 확인</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="guide.html" target="_blank" rel="noopener" class="flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg text-slate-600 transition shrink-0" title="사용 가이드">
+                <i data-lucide="circle-help" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">도움말</span>
+            </a>
+            <div id="me-badge" class="hidden items-center gap-2 text-xs bg-emerald-50 px-3 py-1.5 rounded-lg text-emerald-700 border border-emerald-200 max-w-[50%]">
+                <i data-lucide="user-check" class="w-3.5 h-3.5 shrink-0"></i>
+                <span id="me-label" class="font-bold truncate"></span>
+                <button onclick="logout()" class="ml-1 text-emerald-500 hover:text-red-500 shrink-0" title="로그아웃">×</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div id="toast" class="hide fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2 min-w-max">
+    <i id="toast-icon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-msg">완료</span>
+</div>
+
+<main class="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+
+    <!-- 3중 통합 시스템 안내 -->
+    <section class="bg-gradient-to-r from-slate-50 via-emerald-50/40 to-amber-50/40 border border-emerald-100 rounded-2xl overflow-hidden">
+        <button onclick="toggleIhelp()" class="w-full px-4 py-3 flex items-center justify-between hover:bg-white/40 transition cursor-pointer text-left">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-base">📚</span>
+                <span class="text-sm font-bold text-slate-700">3중 통합 시스템 — 산출물 제출 채널</span>
+                <span class="hidden lg:inline text-[10px] text-slate-500">GitHub → Smart Submission → 협업게시판</span>
+            </div>
+            <i data-lucide="chevron-down" id="ihelp-chevron" class="w-4 h-4 text-slate-500 transition-transform shrink-0"></i>
+        </button>
+        <div id="ihelp-panel" class="hidden px-4 pb-4 pt-2 border-t border-emerald-100">
+            <p class="text-xs text-slate-600 mb-3">본 과목은 다음 3개 시스템을 통합 운영합니다. 매 주차 단계별 진행 필수.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div class="bg-white p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-slate-800 text-white px-2 py-0.5 rounded">① GitHub</span>
+                        <span class="text-[10px] text-red-600 font-bold">매주 18:20 마감</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">팀 저장소 commit·push</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">실습 결과물(코드+문서) 1차 저장</p>
+                    <p class="text-[10px] text-slate-400 mt-1.5">폴더: <code class="bg-slate-100 px-1 rounded text-[9px]">week01/ ~ week15/</code></p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border-2 border-emerald-300 shadow-sm">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded">② Smart Submission</span>
+                        <span class="text-[10px] text-emerald-700 font-bold">📍 본 페이지</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">주차별 보고서·과제 업로드</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">100MB 한도 · GitHub URL/zip</p>
+                    <p class="text-[10px] text-slate-400 mt-1.5">시연 영상 ≤100MB / Release 링크</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-amber-200">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded">③ 협업게시판</span>
+                        <span class="text-[10px] text-slate-500">발표 후 공개</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">시연 영상·자료 공개 열람</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">7주차·14주차 발표 직후</p>
+                    <a href="https://script.google.com/macros/s/AKfycbz9o-9fIRA21I9YLYFuvGPhlLY6LtrRBR4yyzFJGFpfRmBM_4X9_TKo0SebDmOuLyMz/exec" target="_blank" rel="noopener" class="text-[10px] text-amber-700 font-bold hover:underline mt-1 inline-flex items-center gap-1">
+                        바로가기 <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="mt-3 bg-white/60 rounded-lg p-2.5 border border-slate-200">
+                <p class="text-[10px] text-slate-600 font-bold mb-1">📋 파일명·식별 규약</p>
+                <ul class="text-[10px] text-slate-600 space-y-0.5">
+                    <li>• 개인 보고서: <code class="bg-slate-100 px-1 rounded text-[9px]">학번_이름_W{주차}_실습보고서.docx</code></li>
+                    <li>• 팀 산출물: <code class="bg-slate-100 px-1 rounded text-[9px]">팀명_W{주차}_{유형}.docx</code></li>
+                    <li>• GitHub commit: <code class="bg-slate-100 px-1 rounded text-[9px]">[W{주차}] 요약</code></li>
+                    <li>• 본문에 팀명·구성원·역할 반드시 명시</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- STEP 1: 5단계 cascade -->
+    <section id="step-auth" class="step-card bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">1</span>
+            <h2 class="text-sm font-bold">수강 정보 선택 및 본인 확인</h2>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">① 년도</label>
+                <select id="year-sel" onchange="onYearChange()" class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                    <option value="">선택</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">② 학기</label>
+                <select id="semester-sel" onchange="onSemesterChange()" disabled class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                    <option value="">-</option>
+                </select>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">③ 과목</label>
+                <select id="subject-sel" onchange="onSubjectChange()" disabled class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                    <option value="">-</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">④ 팀</label>
+                <select id="team-sel" disabled class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                    <option value="">-</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">⑤ 이름 (ID)</label>
+                <input id="auth-name" type="text" placeholder="예: 홍길동"
+                    class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">⑥ 학번 (PW)</label>
+                <input id="auth-id" type="text" placeholder="예: 2022243107"
+                    class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+            </div>
+        </div>
+        <button onclick="login()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2">
+            <i data-lucide="log-in" class="w-4 h-4"></i> 입장
+        </button>
+        <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">
+            <i data-lucide="info" class="w-3 h-3 inline"></i>
+            년도·학기·과목·팀·이름·학번이 명단과 모두 일치해야 입장 가능
+        </p>
+    </section>
+
+    <!-- 팀 GitHub 저장소 (인증 후 활성화) -->
+    <section id="step-repo" class="step-card locked bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hidden">
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+            <div class="flex items-center gap-2">
+                <span class="text-base">🔗</span>
+                <h2 class="text-sm font-bold">우리 팀 GitHub 저장소</h2>
+                <span id="repo-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded">-</span>
+            </div>
+            <div id="repo-current-wrap" class="hidden flex items-center gap-1.5">
+                <a id="repo-current-link" href="#" target="_blank" rel="noopener" class="text-xs text-emerald-700 font-bold hover:underline inline-flex items-center gap-1">
+                    <i data-lucide="external-link" class="w-3 h-3"></i> 바로가기
+                </a>
+                <button onclick="editRepo()" class="text-[10px] text-slate-500 hover:text-slate-700 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 cursor-pointer">수정</button>
+            </div>
+        </div>
+        <div id="repo-display" class="hidden">
+            <p id="repo-current-url" class="text-xs font-mono text-slate-600 break-all bg-slate-50 px-2.5 py-1.5 rounded border border-slate-200"></p>
+            <p id="repo-meta" class="text-[10px] text-slate-400 mt-1"></p>
+        </div>
+        <div id="repo-edit" class="hidden">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 mb-2">
+                <p class="text-[10px] text-slate-500 leading-relaxed mb-1.5">💡 팀 대표의 <b>GitHub 계정명만</b> 입력하면 권장 저장소명이 자동으로 붙습니다. 이미 만든 저장소는 <b>전체 주소 붙여넣기</b>도 가능.</p>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] text-slate-500">권장:</span>
+                    <code id="repo-reco-name" class="text-[10px] font-mono bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-700"></code>
+                    <button onclick="copyRecoName()" class="text-[10px] text-slate-500 hover:text-emerald-600 inline-flex items-center gap-0.5 cursor-pointer" title="복사"><i data-lucide="copy" class="w-3 h-3"></i></button>
+                </div>
+            </div>
+            <input id="repo-input" type="text" placeholder="예: hong-gildong  또는  https://github.com/hong/iot-5"
+                oninput="updateRepoPreview()" onkeydown="if(event.key==='Enter')saveRepo()"
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-1.5">
+            <div id="repo-preview" class="hidden text-[11px] mb-2 px-2.5 py-1.5 rounded-lg"></div>
+            <div class="flex gap-2">
+                <button onclick="saveRepo()" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition cursor-pointer inline-flex items-center justify-center gap-1">
+                    <i data-lucide="save" class="w-3.5 h-3.5"></i> 저장
+                </button>
+                <button onclick="cancelRepoEdit()" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg cursor-pointer">취소</button>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1.5">⚠ 같은 팀원 누구나 수정 가능 — <b>변경 시 모든 팀원에게 반영됨</b></p>
+        </div>
+    </section>
+
+    <!-- 우리 팀 구성원 (조편성 자동 동기화) -->
+    <section id="step-team" class="step-card locked bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hidden">
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+            <span class="text-base">👥</span>
+            <h2 class="text-sm font-bold">우리 팀 구성원</h2>
+            <span id="team-count-badge" class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-bold">0명</span>
+            <span class="ml-auto text-[10px] text-slate-400">📌 조편성기와 자동 동기화</span>
+        </div>
+        <div id="team-by-pair" class="space-y-3"></div>
+    </section>
+
+    <!-- STEP 2: 주차 + 파일 -->
+    <section id="step-submit" class="step-card locked bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-2 mb-3">
+            <span id="step2-num" class="w-6 h-6 rounded-full bg-slate-300 text-white text-xs font-bold flex items-center justify-center">2</span>
+            <h2 class="text-sm font-bold">주차 선택 및 파일 제출</h2>
+        </div>
+
+        <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">주차</label>
+        <div id="week-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-15 gap-1.5 mb-4"></div>
+
+        <div id="drop-area"
+             class="border-2 border-dashed border-slate-300 rounded-xl p-6 bg-slate-50/60 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition"
+             onclick="document.getElementById('file-input').click()"
+             ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+            <i data-lucide="cloud-upload" class="w-10 h-10 text-slate-300 mx-auto mb-2"></i>
+            <p class="text-sm font-bold text-slate-600">클릭 또는 파일을 끌어 놓기</p>
+            <p class="text-[10px] text-slate-400 mt-1">최대 100MB · 실행파일(.exe·.bat 등) 제외</p>
+            <p class="text-[10px] text-amber-600 mt-0.5">💡 100MB 초과 영상은 Drive/GitHub 링크로 제출 · 같은 주차 재제출 시 이전 파일은 교체됩니다</p>
+            <input type="file" id="file-input" class="hidden" onchange="fileSelected(event)">
+        </div>
+
+        <div id="file-preview" class="hidden mt-3 bg-emerald-50/50 border border-emerald-200 rounded-xl p-3 flex items-center gap-3">
+            <i data-lucide="file-check-2" class="w-6 h-6 text-emerald-600 shrink-0"></i>
+            <div class="flex-1 min-w-0">
+                <p id="file-preview-name" class="text-sm font-bold text-slate-800 truncate"></p>
+                <p id="file-preview-meta" class="text-[10px] text-slate-500"></p>
+            </div>
+            <button onclick="clearSelectedFile()" class="text-slate-400 hover:text-red-500 text-lg leading-none">×</button>
+        </div>
+
+        <label class="block text-[11px] font-semibold text-slate-500 mt-3 mb-1">메모 (선택)</label>
+        <textarea id="note" rows="2" placeholder="예: 시연 영상 1차 버전입니다"
+            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"></textarea>
+
+        <div id="progress-wrap" class="hidden mt-3">
+            <div class="flex items-center justify-between text-[10px] mb-1">
+                <span class="font-bold text-emerald-600" id="progress-label">업로드 중…</span>
+                <span class="text-slate-500" id="progress-pct">0%</span>
+            </div>
+            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div id="progress-bar" class="h-full bg-emerald-500 transition-all" style="width:0%"></div>
+            </div>
+        </div>
+
+        <button id="submit-btn" onclick="submitFile()" class="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <i data-lucide="send" class="w-4 h-4"></i> 제출하기
+        </button>
+    </section>
+
+    <!-- STEP 3: 내역 -->
+    <section id="step-list" class="step-card locked bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <span id="step3-num" class="w-6 h-6 rounded-full bg-slate-300 text-white text-xs font-bold flex items-center justify-center">3</span>
+                <h2 class="text-sm font-bold">제출 내역</h2>
+            </div>
+            <div class="flex items-center gap-1">
+                <button id="scope-mine" onclick="setScope('mine')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-100 text-emerald-700 transition cursor-pointer">본인</button>
+                <button id="scope-team" onclick="setScope('team')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition cursor-pointer">팀원</button>
+                <button onclick="refreshList()" class="p-1.5 text-slate-400 hover:text-emerald-600 transition cursor-pointer" title="새로고침">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </div>
+        <div id="list-area" class="space-y-2">
+            <p class="text-xs text-slate-400 text-center py-6">제출 내역이 없습니다</p>
+        </div>
+    </section>
+</main>
+
+<script>
+let me           = null;
+let subjects     = [];      // 전체 과목 목록 (서버에서 한 번 받음)
+let selectedWeek = null;
+let selectedFile = null;
+let scope        = 'mine';
+let toastTimer   = null;
+let weekDeadlines = [];
+const MAX_BYTES_DEFAULT = 100 * 1024 * 1024;
+
+const $ = id => document.getElementById(id);
+
+function showToast(msg, type='ok') {
+    clearTimeout(toastTimer);
+    const t=$('toast'), ico=$('toast-icon'), txt=$('toast-msg');
+    ico.setAttribute('data-lucide', type==='warn'?'alert-triangle':type==='err'?'x-circle':'check-circle');
+    ico.className = `w-4 h-4 ${type==='warn'?'text-amber-400':type==='err'?'text-red-400':'text-emerald-400'}`;
+    txt.textContent = msg; lucide.createIcons({nodes:[ico]});
+    t.classList.remove('hide');
+    toastTimer = setTimeout(() => t.classList.add('hide'), 3500);
+}
+
+async function api(action, params={}, method='GET') {
+    if (APPS_URL.startsWith('PASTE_')) throw new Error('APPS_URL 설정이 필요합니다');
+    if (method === 'GET') {
+        const url = new URL(APPS_URL);
+        url.searchParams.set('action', action);
+        Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+        const r = await fetch(url.toString(), {method:'GET', redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    } else {
+        const fd = new FormData();
+        fd.append('action', action);
+        Object.entries(params).forEach(([k,v]) => fd.append(k, v));
+        const r = await fetch(APPS_URL, {method:'POST', body:fd, redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    }
+}
+
+/* ── 5단계 cascade ── */
+async function loadSubjects() {
+    try {
+        subjects = await api('getSubjects');
+        const years = [...new Set(subjects.map(s => s.year))].sort((a,b) => b-a); // 최신 년도 먼저
+        const yS = $('year-sel');
+        yS.innerHTML = '<option value="">선택</option>' + years.map(y => `<option value="${y}">${y}년</option>`).join('');
+        if (years.length === 1) { yS.value = String(years[0]); onYearChange(); }
+    } catch (e) {
+        $('year-sel').innerHTML = `<option value="">불러오기 실패</option>`;
+        showToast(e.message, 'err');
+    }
+}
+
+function onYearChange() {
+    const y = parseInt($('year-sel').value);
+    const sS = $('semester-sel'), sjS = $('subject-sel'), tS = $('team-sel');
+    sS.innerHTML = '<option value="">-</option>';
+    sjS.innerHTML = '<option value="">-</option>'; sjS.disabled = true;
+    tS.innerHTML = '<option value="">-</option>'; tS.disabled = true;
+    if (!y) { sS.disabled = true; return; }
+    const sems = [...new Set(subjects.filter(s => s.year === y).map(s => s.semester))].sort();
+    sS.innerHTML = '<option value="">선택</option>' + sems.map(s => `<option value="${s}">${s}학기</option>`).join('');
+    sS.disabled = false;
+    if (sems.length === 1) { sS.value = String(sems[0]); onSemesterChange(); }
+}
+
+function onSemesterChange() {
+    const y = parseInt($('year-sel').value);
+    const s = parseInt($('semester-sel').value);
+    const sjS = $('subject-sel'), tS = $('team-sel');
+    sjS.innerHTML = '<option value="">-</option>';
+    tS.innerHTML = '<option value="">-</option>'; tS.disabled = true;
+    if (!y || !s) { sjS.disabled = true; return; }
+    const cands = subjects.filter(s2 => s2.year === y && s2.semester === s);
+    sjS.innerHTML = '<option value="">선택</option>' +
+        cands.map(c => `<option value="${c.subjectKey}">${escapeHtml(c.subjectName)}</option>`).join('');
+    sjS.disabled = false;
+    if (cands.length === 1) { sjS.value = cands[0].subjectKey; onSubjectChange(); }
+}
+
+async function onSubjectChange() {
+    const tS = $('team-sel');
+    tS.innerHTML = '<option value="">불러오는 중…</option>';
+    tS.disabled = true;
+    const sk = $('subject-sel').value;
+    if (!sk) { tS.innerHTML = '<option value="">-</option>'; return; }
+    try {
+        const teams = await api('getTeams', {subjectKey: sk});
+        if (!teams.length) {
+            tS.innerHTML = '<option value="">등록된 팀 없음</option>';
+            return;
+        }
+        tS.innerHTML = '<option value="">선택</option>' +
+            teams.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+        tS.disabled = false;
+    } catch(e) {
+        tS.innerHTML = `<option value="">불러오기 실패</option>`;
+        showToast(e.message, 'err');
+    }
+}
+
+/* ── 로그인 ── */
+async function login() {
+    const subjectKey = $('subject-sel').value;
+    const teamName   = $('team-sel').value;
+    const studentName = $('auth-name').value.trim();
+    const studentId   = $('auth-id').value.trim();
+    if (!$('year-sel').value || !$('semester-sel').value) return showToast('년도·학기를 선택하세요', 'warn');
+    if (!subjectKey)  return showToast('과목을 선택하세요', 'warn');
+    if (!teamName)    return showToast('팀을 선택하세요', 'warn');
+    if (!studentName || !studentId) return showToast('이름과 학번을 모두 입력하세요', 'warn');
+    try {
+        me = await api('verifyStudent', {subjectKey, teamName, studentName, studentId});
+        sessionStorage.setItem('me', JSON.stringify(me));
+        onLoginSuccess();
+    } catch (e) { showToast(e.message, 'err'); }
+}
+
+function logout() {
+    me = null; selectedWeek = null; selectedFile = null;
+    sessionStorage.removeItem('me');
+    location.reload();
+}
+
+function onLoginSuccess() {
+    $('me-label').textContent = `${me.displayName} · ${me.teamName} · ${me.studentName} (${me.studentId})`;
+    $('me-badge').classList.remove('hidden');
+    $('me-badge').classList.add('flex');
+    $('step-auth').classList.add('locked');
+    $('step-submit').classList.remove('locked');
+    $('step-list').classList.remove('locked');
+    $('step2-num').className = 'w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center';
+    $('step3-num').className = 'w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center';
+    if (me.teamName) {
+        $('step-repo').classList.remove('hidden');
+        $('step-repo').classList.remove('locked');
+        loadTeamRepo();
+        $('step-team').classList.remove('hidden');
+        $('step-team').classList.remove('locked');
+        renderTeamMembers();
+    }
+    loadDeadlines();
+    refreshList();
+}
+
+/* 팀원 목록 — 짝 A/B 그룹화 (조편성기 동기화) */
+function renderTeamMembers() {
+    const meSelf = {studentName: me.studentName, studentId: me.studentId, pair: me.pair || ''};
+    const members = [meSelf, ...(me.teamMembers || [])];
+    $('team-count-badge').textContent = `${members.length}명`;
+    const groups = { A: [], B: [], '': [] };
+    members.forEach(m => {
+        const p = String(m.pair || '').trim().toUpperCase();
+        if (p === 'A') groups.A.push(m);
+        else if (p === 'B') groups.B.push(m);
+        else groups[''].push(m);
+    });
+    const renderGroup = (list, color, label) => {
+        if (!list.length) return '';
+        return `
+        <div class="bg-${color}-50 border border-${color}-200 rounded-xl p-3">
+            <p class="text-[11px] font-bold text-${color}-700 mb-2 flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 bg-${color}-400 rounded-full"></span>
+                ${label} <span class="text-[10px] font-normal text-${color}-600">(${list.length}명)</span>
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                ${list.map(m => {
+                    const isSelf = m.studentName === me.studentName && m.studentId === me.studentId;
+                    return `<div class="bg-${isSelf?color+'-100':'white'} border border-${isSelf?color+'-400':color+'-200'} rounded-lg p-2 flex items-center gap-2 ${isSelf?'ring-2 ring-'+color+'-300':''}">
+                        <i data-lucide="${isSelf?'user-check':'user'}" class="w-3.5 h-3.5 ${isSelf?(color==='blue'?'text-blue-700':'text-violet-700'):'text-slate-400'} shrink-0"></i>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(m.studentName)}${isSelf?' (나)':''}</p>
+                            <p class="text-[10px] font-mono text-slate-500">${escapeHtml(m.studentId)}</p>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    };
+    const hasPairs = groups.A.length > 0 || groups.B.length > 0;
+    let html = '';
+    if (hasPairs) {
+        html += renderGroup(groups.A, 'blue',   '🅰️ 짝 A');
+        html += renderGroup(groups.B, 'violet', '🅱️ 짝 B');
+        if (groups[''].length) {
+            html += `<div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-3">
+                <p class="text-[11px] font-bold text-slate-500 mb-2">⚠ 짝 미지정 (${groups[''].length}명)</p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    ${groups[''].map(m => {
+                        const isSelf = m.studentName === me.studentName && m.studentId === me.studentId;
+                        return `<div class="bg-white border border-slate-200 rounded-lg p-2 flex items-center gap-2 ${isSelf?'ring-2 ring-slate-300':''}">
+                            <i data-lucide="user" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(m.studentName)}${isSelf?' (나)':''}</p>
+                                <p class="text-[10px] font-mono text-slate-500">${escapeHtml(m.studentId)}</p>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }
+    } else {
+        html = `<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            ${members.map(m => {
+                const isSelf = m.studentName === me.studentName && m.studentId === me.studentId;
+                return `<div class="bg-${isSelf?'slate-100':'slate-50'} border border-${isSelf?'slate-400':'slate-200'} rounded-lg p-2 flex items-center gap-2">
+                    <i data-lucide="${isSelf?'user-check':'user'}" class="w-3.5 h-3.5 ${isSelf?'text-slate-700':'text-slate-400'} shrink-0"></i>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(m.studentName)}${isSelf?' (나)':''}</p>
+                        <p class="text-[10px] font-mono text-slate-500">${escapeHtml(m.studentId)}</p>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">💡 짝 A/B 정보가 없습니다. 조편성기로 적용 시 자동 그룹화됩니다.</p>`;
+    }
+    $('team-by-pair').innerHTML = html;
+    lucide.createIcons();
+}
+
+async function loadDeadlines() {
+    try {
+        weekDeadlines = await api('getDeadlines', {subjectKey: me.subjectKey});
+    } catch(e) { weekDeadlines = []; }
+    renderWeekGrid();
+}
+
+/* ── 팀 GitHub 저장소 ── */
+async function loadTeamRepo() {
+    try {
+        const repo = await api('getTeamRepo', {subjectKey: me.subjectKey, teamName: me.teamName});
+        if (repo && repo.repoUrl) renderRepoDisplay(repo);
+        else renderRepoEmpty();
+    } catch(e) {
+        // API 호출 실패 시에도 입력 폼은 표시 (백엔드 미배포 등)
+        renderRepoEmpty();
+        console.warn('getTeamRepo:', e.message);
+    }
+    lucide.createIcons();
+}
+
+function renderRepoDisplay(repo) {
+    const isAuto = repo.registeredBy === '_AUTO';
+    $('repo-status-badge').textContent = isAuto ? '📌 교수 사전 등록' : '✓ 등록됨';
+    $('repo-status-badge').className   = isAuto
+        ? 'text-[10px] font-bold bg-sky-100 text-sky-700 px-2 py-0.5 rounded'
+        : 'text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded';
+    $('repo-current-url').textContent  = repo.repoUrl;
+    $('repo-current-link').href        = repo.repoUrl;
+    const when = repo.registeredAt ? new Date(repo.registeredAt).toLocaleString('ko-KR') : '';
+    $('repo-meta').textContent = isAuto
+        ? `📌 교수가 사전 등록 — URL이 맞지 않으면 [수정] 해주세요`
+        : `등록: ${repo.registeredByName || '-'} · ${when}`;
+    $('repo-current-wrap').classList.remove('hidden');
+    $('repo-current-wrap').classList.add('flex');
+    $('repo-display').classList.remove('hidden');
+    $('repo-edit').classList.add('hidden');
+    $('repo-input').value = repo.repoUrl;
+}
+
+function renderRepoEmpty() {
+    $('repo-status-badge').textContent = '미등록';
+    $('repo-status-badge').className   = 'text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded';
+    $('repo-current-wrap').classList.add('hidden');
+    $('repo-current-wrap').classList.remove('flex');
+    $('repo-display').classList.add('hidden');
+    $('repo-edit').classList.remove('hidden');
+    $('repo-input').value = '';
+    $('repo-reco-name').textContent = recommendedRepoName();
+    updateRepoPreview();
+}
+
+function editRepo() {
+    $('repo-display').classList.add('hidden');
+    $('repo-edit').classList.remove('hidden');
+    $('repo-reco-name').textContent = recommendedRepoName();
+    updateRepoPreview();
+    $('repo-input').focus();
+}
+
+function cancelRepoEdit() { loadTeamRepo(); }
+
+/* 권장 저장소명: 과목키 + 팀번호 */
+function recommendedRepoName() {
+    const teamNum = (String(me.teamName || '').match(/\d+/) || [''])[0];
+    const base = String(me.subjectKey || 'class').replace(/[^a-zA-Z0-9-]/g, '');
+    return teamNum ? `${base}-team${teamNum}` : `${base}-${String(me.teamName).replace(/[^a-zA-Z0-9-]/g,'') || 'team'}`;
+}
+
+/* 입력을 최종 GitHub URL로 정규화 */
+function normalizeRepoInput(raw) {
+    let s = String(raw || '').trim();
+    if (!s) return '';
+    s = s.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+    if (s.toLowerCase().startsWith('github.com/')) s = s.substring('github.com/'.length);
+    const parts = s.split('/').filter(p => p);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return `https://github.com/${parts[0]}/${recommendedRepoName()}`;
+    return `https://github.com/${parts[0]}/${parts[1]}`;
+}
+
+function updateRepoPreview() {
+    const raw = $('repo-input').value.trim();
+    const box = $('repo-preview');
+    if (!raw) { box.classList.add('hidden'); return; }
+    const url = normalizeRepoInput(raw);
+    box.classList.remove('hidden');
+    const valid = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(url);
+    if (valid) {
+        box.className = 'text-[11px] mb-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 break-all';
+        box.innerHTML = `→ 등록될 주소: <b>${escapeHtml(url)}</b>`;
+    } else {
+        box.className = 'text-[11px] mb-2 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700';
+        box.textContent = '주소 형식을 확인하세요 (계정명만 또는 github.com/계정/저장소)';
+    }
+}
+
+function copyRecoName() {
+    const name = recommendedRepoName();
+    navigator.clipboard?.writeText(name).then(
+        () => showToast(`'${name}' 복사됨`),
+        () => showToast('복사 실패 — 직접 입력하세요', 'warn')
+    );
+}
+
+async function saveRepo() {
+    const raw = $('repo-input').value.trim();
+    if (!raw) return showToast('GitHub 계정명 또는 주소를 입력하세요', 'warn');
+    const url = normalizeRepoInput(raw);
+    if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(url))
+        return showToast('주소 형식 확인 (계정명만 또는 github.com/계정/저장소)', 'warn');
+    try {
+        const res = await api('setTeamRepo', {
+            subjectKey:  me.subjectKey,
+            teamName:    me.teamName,
+            studentName: me.studentName,
+            studentId:   me.studentId,
+            repoUrl:     url
+        }, 'POST');
+        showToast(res.action === 'created' ? '저장소 등록 완료' : '저장소 수정 완료');
+        await loadTeamRepo();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function renderWeekGrid() {
+    const g = $('week-grid'); g.innerHTML = '';
+    const dlMap = {};
+    weekDeadlines.forEach(d => dlMap[d.week] = d);
+    for (let w=1; w<=me.totalWeeks; w++) {
+        const dl = dlMap[w] || {status:'open'};
+        const b = document.createElement('button');
+        // 상태별 색상 + 텍스트
+        let extra = '', sub = '', disabled = false;
+        if (dl.status === 'closed') {
+            extra = 'bg-slate-100 text-slate-400 line-through border-slate-200';
+            sub = '마감';
+            disabled = true;
+        } else if (dl.status === 'late_open') {
+            extra = 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
+            sub = '지연 가능';
+        } else if (dl.status === 'urgent') {
+            extra = 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100 ring-1 ring-orange-200';
+            sub = '⚠ 임박';
+        } else if (dl.status === 'near') {
+            extra = 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100';
+            sub = '주의';
+        } else {
+            extra = 'bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300';
+        }
+        b.className = `week-btn text-xs font-bold py-2 px-1 rounded-lg border ${extra} cursor-pointer flex flex-col items-center`;
+        b.innerHTML = `<span>${w}주</span>${sub?`<span class="text-[8px] font-normal opacity-80">${sub}</span>`:''}`;
+        if (disabled) {
+            b.disabled = true;
+            b.style.cursor = 'not-allowed';
+            b.title = '마감되어 제출 불가';
+        } else {
+            b.title = dl.deadline ? `마감: ${new Date(dl.deadline).toLocaleString('ko-KR')}` : '마감일 미설정';
+        }
+        b.onclick = () => {
+            if (disabled) {
+                showToast(`${w}주차는 마감되었습니다`, 'warn');
+                return;
+            }
+            selectedWeek = w;
+            g.querySelectorAll('.week-btn').forEach(x => x.classList.remove('selected'));
+            b.classList.add('selected');
+            if (dl.deadline) {
+                const dueStr = new Date(dl.deadline).toLocaleString('ko-KR');
+                if (dl.status === 'late_open') showToast(`⚠ ${w}주차는 마감(${dueStr})이 지났습니다. 지연 제출은 허용됨`, 'warn');
+                else if (dl.status === 'urgent') showToast(`⏰ 24시간 이내 마감: ${dueStr}`, 'warn');
+            }
+        };
+        g.appendChild(b);
+    }
+}
+
+/* ── 파일 선택 ── */
+function dragOver(e) { e.preventDefault(); $('drop-area').classList.add('file-drag-on'); }
+function dragLeave(e){ e.preventDefault(); $('drop-area').classList.remove('file-drag-on'); }
+function dropFile(e) {
+    e.preventDefault(); $('drop-area').classList.remove('file-drag-on');
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+}
+function fileSelected(e) { if (e.target.files[0]) setFile(e.target.files[0]); e.target.value=''; }
+function setFile(f) {
+    if (f.size > MAX_BYTES_DEFAULT) { showToast(`파일이 100MB를 초과합니다 (${(f.size/1024/1024).toFixed(1)}MB)`, 'warn'); return; }
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    if (['exe','bat','cmd','sh','com','msi','vbs','scr'].includes(ext)) {
+        showToast(`보안상 .${ext} 파일은 업로드할 수 없습니다`, 'warn'); return;
+    }
+    selectedFile = f;
+    $('file-preview').classList.remove('hidden');
+    $('file-preview').classList.add('flex');
+    $('file-preview-name').textContent = f.name;
+    $('file-preview-meta').textContent = `${(f.size/1024/1024).toFixed(2)} MB · ${f.type || '형식 미상'}`;
+    lucide.createIcons();
+}
+function clearSelectedFile() {
+    selectedFile = null;
+    $('file-preview').classList.add('hidden');
+    $('file-preview').classList.remove('flex');
+}
+
+/* ── 업로드 ── */
+async function submitFile() {
+    if (!me)            return showToast('로그인이 필요합니다', 'warn');
+    if (!selectedWeek)  return showToast('주차를 선택하세요', 'warn');
+    if (!selectedFile)  return showToast('파일을 첨부하세요', 'warn');
+
+    $('submit-btn').disabled = true;
+    $('progress-wrap').classList.remove('hidden');
+    setProgress(5, '파일 읽는 중…');
+
+    try {
+        const base64 = await readFileAsBase64(selectedFile, p => setProgress(5 + p * 40, '파일 읽는 중…'));
+        setProgress(50, '서버 전송 중…');
+        const res = await api('submit', {
+            subjectKey:  me.subjectKey,
+            teamName:    me.teamName,
+            studentName: me.studentName,
+            studentId:   me.studentId,
+            week:        selectedWeek,
+            fileName:    selectedFile.name,
+            fileType:    selectedFile.type || 'application/octet-stream',
+            fileData:    base64,
+            note:        $('note').value.trim()
+        }, 'POST');
+        setProgress(100, '완료');
+        showToast(res.replaced > 0
+            ? `✓ ${selectedWeek}주차 제출 완료 (이전 제출 교체됨): ${res.fileName}`
+            : `✓ ${selectedWeek}주차 제출 완료: ${res.fileName}`);
+        clearSelectedFile();
+        $('note').value = '';
+        setTimeout(() => $('progress-wrap').classList.add('hidden'), 800);
+        await refreshList();
+    } catch (e) {
+        showToast(e.message, 'err');
+        setProgress(0, '실패');
+    } finally {
+        $('submit-btn').disabled = false;
+    }
+}
+
+function setProgress(pct, label) {
+    $('progress-bar').style.width = pct + '%';
+    $('progress-pct').textContent = Math.round(pct) + '%';
+    if (label) $('progress-label').textContent = label;
+}
+
+function readFileAsBase64(file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded/e.total); };
+        r.onload  = () => resolve(r.result.split(',')[1]);
+        r.onerror = () => reject(new Error('파일 읽기 실패'));
+        r.readAsDataURL(file);
+    });
+}
+
+/* ── 내역 ── */
+function setScope(s) {
+    scope = s;
+    $('scope-mine').className = 'px-2.5 py-1 text-[11px] font-bold rounded-lg transition cursor-pointer ' + (s==='mine' ? 'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500 hover:bg-slate-200');
+    $('scope-team').className = 'px-2.5 py-1 text-[11px] font-bold rounded-lg transition cursor-pointer ' + (s==='team' ? 'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500 hover:bg-slate-200');
+    refreshList();
+}
+
+async function refreshList() {
+    if (!me) return;
+    const area = $('list-area');
+    area.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">불러오는 중…</p>';
+    try {
+        const subs = await api(scope==='team' ? 'getTeamSubmissions' : 'getMySubmissions', {
+            subjectKey: me.subjectKey, teamName: me.teamName,
+            studentName: me.studentName, studentId: me.studentId
+        });
+        if (!subs.length) {
+            area.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">${scope==='team'?'팀원 ':''}제출 내역이 없습니다</p>`;
+            return;
+        }
+        subs.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+        area.innerHTML = subs.map(s => renderItem(s)).join('');
+        lucide.createIcons();
+    } catch (e) {
+        area.innerHTML = `<p class="text-xs text-red-500 text-center py-4">${escapeHtml(e.message)}</p>`;
+    }
+}
+
+function renderItem(s) {
+    const mine = String(s.studentName) === me.studentName && String(s.studentId) === me.studentId;
+    const when = new Date(s.submittedAt).toLocaleString('ko-KR');
+    const sizeMB = (Number(s.fileSize)/1024/1024).toFixed(2);
+    return `
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3 hover:border-emerald-300 transition">
+        <span class="text-[10px] font-bold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-md shrink-0">${s.week}주</span>
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-bold text-slate-800 truncate">${escapeHtml(s.fileName)}</span>
+                ${mine
+                    ? '<span class="text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">본인</span>'
+                    : `<span class="text-[9px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">${escapeHtml(s.studentName)}</span>`}
+            </div>
+            <p class="text-[10px] text-slate-500 mt-0.5">${sizeMB} MB · ${when}</p>
+            ${s.note ? `<p class="text-[10px] text-slate-400 italic mt-0.5">"${escapeHtml(s.note)}"</p>` : ''}
+        </div>
+        <button onclick="downloadFile('${s.fileId}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg inline-flex items-center gap-1 transition cursor-pointer">
+            <i data-lucide="download" class="w-3 h-3"></i> 받기
+        </button>
+    </div>`;
+}
+
+async function downloadFile(fileId) {
+    try {
+        const r = await api('download', {
+            fileId, subjectKey:me.subjectKey, teamName:me.teamName,
+            studentName:me.studentName, studentId:me.studentId
+        });
+        window.open(r.url, '_blank');
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+
+/* ── 3중 통합 시스템 안내 토글 ── */
+function toggleIhelp() {
+    const panel = $('ihelp-panel');
+    const chev  = $('ihelp-chevron');
+    const isHidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !isHidden);
+    if (chev) chev.style.transform = isHidden ? 'rotate(180deg)' : '';
+    if (isHidden) lucide.createIcons();
+}
+
+/* ── INIT ── */
+lucide.createIcons();
+loadSubjects();
+const saved = sessionStorage.getItem('me');
+if (saved) {
+    try {
+        const m = JSON.parse(saved);
+        // 과목 목록 로드 후 자동 복원
+        const wait = setInterval(() => {
+            if (subjects.length) {
+                clearInterval(wait);
+                $('year-sel').value = String(m.year); onYearChange();
+                setTimeout(() => {
+                    $('semester-sel').value = String(m.semester); onSemesterChange();
+                    setTimeout(() => {
+                        $('subject-sel').value = m.subjectKey;
+                        onSubjectChange().then(() => {
+                            $('team-sel').value = m.teamName;
+                            $('auth-name').value = m.studentName;
+                            $('auth-id').value = m.studentId;
+                            me = m;
+                            onLoginSuccess();
+                        });
+                    }, 60);
+                }, 60);
+            }
+        }, 60);
+    } catch(e) {}
+}
+['auth-name','auth-id'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') login(); }));
+</script>
+</body>
+</html>

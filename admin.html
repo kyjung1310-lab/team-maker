@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>교수 대시보드 · Smart Submission</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    body { font-family:'Noto Sans KR',sans-serif; background:#f0f2fa; }
+    #toast { transition:opacity .3s, transform .3s; }
+    #toast.hide { opacity:0; transform:translateY(8px) scale(.97); pointer-events:none; }
+    .stat-card { transition:transform .2s; }
+    .stat-card:hover { transform:translateY(-2px); }
+    th { position:sticky; top:0; background:white; z-index:1; }
+</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen">
+
+<script>
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbw9k-9lYg9GivdUEG6pPODPxP5S4B5tONDT3q33GcO50vMAbymQ1v60O6xZA9m626KwUw/exec';
+</script>
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="p-2 bg-violet-600 text-white rounded-xl shadow-md shadow-violet-200 shrink-0">
+                <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-lg font-bold text-slate-900 tracking-tight">교수 대시보드</h1>
+                <p class="text-xs text-slate-500 truncate">다중 과목 모니터링</p>
+            </div>
+        </div>
+        <div id="header-actions" class="hidden items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            <select id="year-sel" onchange="onYearChange()" class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400"></select>
+            <select id="semester-sel" onchange="onSemesterChange()" disabled class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400"></select>
+            <select id="subject-sel" onchange="onSubjectChange()" disabled class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 max-w-[220px] truncate focus:outline-none focus:ring-2 focus:ring-violet-400"></select>
+            <button onclick="loadAll()" class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 transition cursor-pointer" title="새로고침">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="exportCSV()" class="py-1.5 px-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 transition cursor-pointer shadow-sm" title="CSV 내보내기">
+                <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-red-500 transition cursor-pointer" title="로그아웃">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<div id="toast" class="hide fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2 min-w-max">
+    <i id="toast-icon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-msg">완료</span>
+</div>
+
+<!-- 로그인 화면 -->
+<div id="login-screen" class="fixed inset-0 bg-slate-100 flex items-center justify-center z-40 p-4">
+    <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+        <div class="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div class="p-2 bg-violet-600 text-white rounded-xl">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h2 class="text-sm font-bold">관리자 로그인</h2>
+                <p class="text-[10px] text-slate-500">교수님 비밀번호를 입력하세요</p>
+            </div>
+        </div>
+        <label class="block text-[11px] font-semibold text-slate-500 mb-1">비밀번호</label>
+        <input id="pw-input" type="password" placeholder="••••••••"
+            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:bg-white transition mb-3">
+        <button onclick="adminLogin()" class="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2">
+            <i data-lucide="log-in" class="w-4 h-4"></i> 로그인
+        </button>
+    </div>
+</div>
+
+<main id="main-area" class="hidden max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+    <!-- 3중 통합 시스템 안내 -->
+    <section class="bg-gradient-to-r from-slate-50 via-emerald-50/40 to-amber-50/40 border border-emerald-100 rounded-2xl overflow-hidden">
+        <button onclick="toggleIhelp()" class="w-full px-4 py-3 flex items-center justify-between hover:bg-white/40 transition cursor-pointer text-left">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-base">📚</span>
+                <span class="text-sm font-bold text-slate-700">3중 통합 시스템 — 산출물 제출 채널</span>
+                <span class="hidden lg:inline text-[10px] text-slate-500">GitHub → Smart Submission → 협업게시판</span>
+                <span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">📍 본 페이지: ② 관리 (교수)</span>
+            </div>
+            <i data-lucide="chevron-down" id="ihelp-chevron" class="w-4 h-4 text-slate-500 transition-transform shrink-0"></i>
+        </button>
+        <div id="ihelp-panel" class="hidden px-4 pb-4 pt-2 border-t border-emerald-100">
+            <p class="text-xs text-slate-600 mb-3">본 과목은 3개 시스템을 통합 운영합니다. 본 페이지는 ② Smart Submission의 교수 관리 화면입니다.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div class="bg-white p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-slate-800 text-white px-2 py-0.5 rounded">① GitHub</span>
+                        <span class="text-[10px] text-red-600 font-bold">매주 18:20</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">팀 저장소 commit·push</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">학생 실습 코드/문서 1차 저장소</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border-2 border-emerald-300 shadow-sm">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded">② Smart Submission</span>
+                        <span class="text-[10px] text-emerald-700 font-bold">📍 본 페이지</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">평가 채널 — 제출 모니터링</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">제출률·다운로드·미제출자 추적</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-amber-200">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded">③ 협업게시판</span>
+                        <span class="text-[10px] text-slate-500">발표 후</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">시연 영상·자료 공개</p>
+                    <a href="https://script.google.com/macros/s/AKfycbz9o-9fIRA21I9YLYFuvGPhlLY6LtrRBR4yyzFJGFpfRmBM_4X9_TKo0SebDmOuLyMz/exec" target="_blank" rel="noopener" class="text-[10px] text-amber-700 font-bold hover:underline mt-1 inline-flex items-center gap-1">
+                        바로가기 <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="mt-3 bg-white/60 rounded-lg p-2.5 border border-slate-200">
+                <p class="text-[10px] text-slate-600 font-bold mb-1">📋 파일명·식별 규약 (학생 안내용)</p>
+                <ul class="text-[10px] text-slate-600 space-y-0.5">
+                    <li>• 개인 보고서: <code class="bg-slate-100 px-1 rounded text-[9px]">학번_이름_W{주차}_실습보고서.docx</code></li>
+                    <li>• 팀 산출물: <code class="bg-slate-100 px-1 rounded text-[9px]">팀명_W{주차}_{유형}.docx</code></li>
+                    <li>• GitHub commit: <code class="bg-slate-100 px-1 rounded text-[9px]">[W{주차}] 요약</code></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- 저장 용량 사용량 배너 -->
+    <section id="storage-banner" class="hidden bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+            <h3 class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <i data-lucide="hard-drive" class="w-3.5 h-3.5"></i> 제출 시스템 저장 용량 (전체 과목)
+            </h3>
+            <div class="flex items-center gap-2">
+                <span id="storage-label" class="text-xs font-bold text-slate-700">-</span>
+                <button onclick="changeQuota()" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded inline-flex items-center gap-1 cursor-pointer" title="할당 용량 변경">
+                    <i data-lucide="settings-2" class="w-3 h-3"></i> 한도 조정
+                </button>
+            </div>
+        </div>
+        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div id="storage-bar" class="h-full bg-emerald-500 transition-all" style="width:0%"></div>
+        </div>
+        <p id="storage-detail" class="text-[10px] text-slate-400 mt-1.5"></p>
+    </section>
+
+    <!-- 통계 카드 -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                <i data-lucide="users" class="w-3 h-3"></i> 등록 학생
+            </div>
+            <div class="text-2xl font-bold text-slate-800" id="stat-students">-</div>
+        </div>
+        <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="text-[10px] font-bold text-emerald-500 uppercase mb-1 flex items-center gap-1">
+                <i data-lucide="upload" class="w-3 h-3"></i> 총 제출
+            </div>
+            <div class="text-2xl font-bold text-emerald-600" id="stat-submissions">-</div>
+        </div>
+        <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="text-[10px] font-bold text-sky-500 uppercase mb-1 flex items-center gap-1">
+                <i data-lucide="download" class="w-3 h-3"></i> 총 다운로드
+            </div>
+            <div class="text-2xl font-bold text-sky-600" id="stat-downloads">-</div>
+        </div>
+        <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="text-[10px] font-bold text-amber-500 uppercase mb-1 flex items-center gap-1">
+                <i data-lucide="check-square" class="w-3 h-3"></i> 활성 주차
+            </div>
+            <div class="text-2xl font-bold text-amber-600" id="stat-active-weeks">-</div>
+        </div>
+    </section>
+
+    <!-- 차트 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-1.5">
+                <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i> 주차별 제출 인원
+            </h3>
+            <div style="height:240px"><canvas id="chart-week"></canvas></div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-1.5">
+                <i data-lucide="users" class="w-3.5 h-3.5"></i> 팀별 제출 건수
+            </h3>
+            <div style="height:240px"><canvas id="chart-team"></canvas></div>
+        </div>
+    </section>
+
+    <!-- 필터 + 제출 표 -->
+    <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <h3 class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <i data-lucide="table-2" class="w-3.5 h-3.5"></i> 제출 내역
+                <span id="sub-count-badge" class="ml-1 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full font-bold text-slate-600">0</span>
+            </h3>
+            <div class="flex items-center gap-2 flex-wrap">
+                <select id="filter-week" onchange="renderTable()" class="px-2 py-1 text-[11px] bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-400">
+                    <option value="">전체 주차</option>
+                </select>
+                <select id="filter-team" onchange="renderTable()" class="px-2 py-1 text-[11px] bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-400">
+                    <option value="">전체 팀</option>
+                </select>
+                <input id="filter-keyword" type="text" placeholder="이름·학번 검색" oninput="renderTable()"
+                    class="px-2 py-1 text-[11px] bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-violet-400 w-32">
+            </div>
+        </div>
+        <div class="max-h-[420px] overflow-auto border border-slate-100 rounded-xl">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase">
+                    <tr>
+                        <th class="text-left px-3 py-2 font-bold">일시</th>
+                        <th class="text-center px-3 py-2 font-bold">주차</th>
+                        <th class="text-left px-3 py-2 font-bold">이름</th>
+                        <th class="text-left px-3 py-2 font-bold">학번</th>
+                        <th class="text-left px-3 py-2 font-bold">팀</th>
+                        <th class="text-left px-3 py-2 font-bold">파일</th>
+                        <th class="text-right px-3 py-2 font-bold">크기</th>
+                        <th class="text-center px-3 py-2 font-bold">작업</th>
+                    </tr>
+                </thead>
+                <tbody id="sub-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 빠른 학생 추가 -->
+    <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <button onclick="toggleAddStudent()" class="w-full flex items-center justify-between cursor-pointer">
+            <h3 class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> 빠른 학생 추가
+                <span class="text-[10px] font-normal text-slate-400">(시트 안 거치고 즉시 등록)</span>
+            </h3>
+            <i data-lucide="chevron-down" id="add-stu-chev" class="w-4 h-4 text-slate-400 transition-transform"></i>
+        </button>
+        <div id="add-stu-panel" class="hidden mt-3 pt-3 border-t border-slate-100">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
+                <input id="addst-name" type="text" placeholder="이름 *" onkeydown="if(event.key==='Enter')addStudent()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-violet-400">
+                <input id="addst-id"   type="text" placeholder="학번 *" onkeydown="if(event.key==='Enter')addStudent()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-violet-400">
+                <input id="addst-team" type="text" placeholder="팀명 (예: 5팀)" onkeydown="if(event.key==='Enter')addStudent()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-violet-400">
+                <input id="addst-email" type="email" placeholder="이메일 (선택)" onkeydown="if(event.key==='Enter')addStudent()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-violet-400">
+            </div>
+            <button onclick="addStudent()" class="py-1.5 px-3 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-lg inline-flex items-center gap-1 transition cursor-pointer">
+                <i data-lucide="plus" class="w-3 h-3"></i> 현재 과목에 추가
+            </button>
+            <span class="ml-2 text-[10px] text-slate-500">대상 과목: <span id="addst-target" class="font-bold text-violet-700">-</span></span>
+        </div>
+    </section>
+
+    <!-- 팀별 GitHub 저장소 -->
+    <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <h3 class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5 flex-wrap">
+                <i data-lucide="github" class="w-3.5 h-3.5"></i> 팀별 GitHub 저장소
+                <span id="repo-count-badge" class="ml-1 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full font-bold text-slate-600">0 / 0</span>
+                <span id="repo-warn-badge" class="hidden ml-1 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold border border-amber-300">⚠ 미등록 0팀</span>
+                <span id="repo-orphan-badge" class="hidden ml-1 text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold border border-red-300">🗑 고아 0팀</span>
+            </h3>
+            <button onclick="loadAllRepos()" class="py-1 px-2 text-[10px] text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded cursor-pointer inline-flex items-center gap-1">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i> 새로고침
+            </button>
+        </div>
+        <div id="repo-hint" class="hidden mb-3 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+            <i data-lucide="info" class="w-3 h-3 inline"></i>
+            <b>학생 명단이 변경되었습니다.</b> 미등록 팀이 있습니다. Sheets에서 <code class="bg-amber-100 px-1 rounded">🎓 제출 시스템 → 🔗 팀 저장소 일괄 등록</code> 메뉴로 신규 팀만 안전하게 추가하세요 (덮어쓰기: 아니오).
+        </div>
+        <div id="repo-area" class="overflow-x-auto border border-slate-100 rounded-xl">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase">
+                    <tr>
+                        <th class="text-left px-3 py-2 font-bold">팀</th>
+                        <th class="text-center px-3 py-2 font-bold">인원</th>
+                        <th class="text-left px-3 py-2 font-bold">상태</th>
+                        <th class="text-left px-3 py-2 font-bold">저장소 URL</th>
+                        <th class="text-left px-3 py-2 font-bold">등록자</th>
+                        <th class="text-left px-3 py-2 font-bold">등록일</th>
+                        <th class="text-center px-3 py-2 font-bold">바로가기</th>
+                    </tr>
+                </thead>
+                <tbody id="repo-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 주차별 미제출자 -->
+    <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <h3 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-1.5">
+            <i data-lucide="user-x" class="w-3.5 h-3.5"></i> 주차별 제출 현황
+        </h3>
+        <div id="pending-area" class="space-y-3"></div>
+    </section>
+</main>
+
+<script>
+let token       = null;
+let allData     = null;
+let stats       = null;
+let toastTimer  = null;
+let chartWeek   = null;
+let chartTeam   = null;
+let subjects    = [];       // 전체 과목 목록
+let currentSubject = null;  // 현재 선택된 subjectKey
+
+const $ = id => document.getElementById(id);
+
+function showToast(msg, type='ok') {
+    clearTimeout(toastTimer);
+    const t=$('toast'), ico=$('toast-icon'), txt=$('toast-msg');
+    ico.setAttribute('data-lucide', type==='warn'?'alert-triangle':type==='err'?'x-circle':'check-circle');
+    ico.className = `w-4 h-4 ${type==='warn'?'text-amber-400':type==='err'?'text-red-400':'text-emerald-400'}`;
+    txt.textContent = msg; lucide.createIcons({nodes:[ico]});
+    t.classList.remove('hide');
+    toastTimer = setTimeout(() => t.classList.add('hide'), 3500);
+}
+
+async function api(action, params={}, method='GET') {
+    if (APPS_URL.startsWith('PASTE_')) throw new Error('APPS_URL 설정이 필요합니다');
+    if (method === 'GET') {
+        const url = new URL(APPS_URL);
+        url.searchParams.set('action', action);
+        Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+        const r = await fetch(url.toString(), {method:'GET', redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    } else {
+        const fd = new FormData();
+        fd.append('action', action);
+        Object.entries(params).forEach(([k,v]) => fd.append(k, v));
+        const r = await fetch(APPS_URL, {method:'POST', body:fd, redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    }
+}
+
+/* ── 로그인 ── */
+const TOKEN_TTL_MS = 4 * 60 * 60 * 1000; // 4시간
+
+async function adminLogin() {
+    const pw = $('pw-input').value.trim();
+    if (!pw) return showToast('비밀번호를 입력하세요', 'warn');
+    try {
+        const r = await api('adminLogin', {password: pw});
+        token = r.token;
+        sessionStorage.setItem('admin_token', token);
+        sessionStorage.setItem('admin_token_at', String(Date.now()));
+        await onLoginSuccess();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function logout() {
+    token = null; currentSubject = null;
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token_at');
+    sessionStorage.removeItem('admin_subject');
+    location.reload();
+}
+
+function isTokenExpired() {
+    const at = parseInt(sessionStorage.getItem('admin_token_at') || '0');
+    if (!at) return true;
+    return (Date.now() - at) > TOKEN_TTL_MS;
+}
+
+async function onLoginSuccess() {
+    $('login-screen').classList.add('hidden');
+    $('main-area').classList.remove('hidden');
+    $('header-actions').classList.remove('hidden');
+    $('header-actions').classList.add('flex');
+    try {
+        subjects = await api('getSubjects');
+        if (!subjects.length) {
+            $('year-sel').innerHTML = '<option value="">등록된 과목 없음</option>';
+            return;
+        }
+        const years = [...new Set(subjects.map(s => s.year))].sort((a,b) => b-a);
+        $('year-sel').innerHTML = years.map(y => `<option value="${y}">${y}년</option>`).join('');
+        // 세션에 저장된 선택 복원
+        const saved = JSON.parse(sessionStorage.getItem('admin_filter') || '{}');
+        const initYear = (saved.year && years.includes(saved.year)) ? saved.year : years[0];
+        $('year-sel').value = String(initYear);
+        await onYearChange(saved);
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+async function onYearChange(saved) {
+    const y = parseInt($('year-sel').value);
+    const sems = [...new Set(subjects.filter(s => s.year === y).map(s => s.semester))].sort();
+    $('semester-sel').innerHTML = sems.map(s => `<option value="${s}">${s}학기</option>`).join('');
+    $('semester-sel').disabled = !sems.length;
+    if (sems.length) {
+        const initSem = (saved && saved.semester && sems.includes(saved.semester)) ? saved.semester : sems[0];
+        $('semester-sel').value = String(initSem);
+        await onSemesterChange(saved);
+    }
+}
+
+async function onSemesterChange(saved) {
+    const y = parseInt($('year-sel').value);
+    const s = parseInt($('semester-sel').value);
+    const cands = subjects.filter(x => x.year === y && x.semester === s);
+    $('subject-sel').innerHTML = cands.map(c => `<option value="${c.subjectKey}">${escapeHtml(c.subjectName)}</option>`).join('');
+    $('subject-sel').disabled = !cands.length;
+    if (cands.length) {
+        const initKey = (saved && saved.subjectKey && cands.find(c => c.subjectKey === saved.subjectKey))
+            ? saved.subjectKey : cands[0].subjectKey;
+        $('subject-sel').value = initKey;
+        await onSubjectChange();
+    } else {
+        currentSubject = null;
+        clearDashboard();
+    }
+}
+
+async function onSubjectChange() {
+    currentSubject = $('subject-sel').value;
+    sessionStorage.setItem('admin_filter', JSON.stringify({
+        year:     parseInt($('year-sel').value),
+        semester: parseInt($('semester-sel').value),
+        subjectKey: currentSubject
+    }));
+    await loadAll();
+}
+
+function clearDashboard() {
+    ['stat-students','stat-submissions','stat-downloads','stat-active-weeks'].forEach(id => $(id).textContent = '-');
+    $('sub-tbody').innerHTML = '<tr><td colspan="8" class="text-center text-slate-400 py-6">선택된 과목이 없습니다</td></tr>';
+    $('pending-area').innerHTML = '<p class="text-xs text-slate-400 text-center py-4">데이터 없음</p>';
+    if (chartWeek) chartWeek.destroy();
+    if (chartTeam) chartTeam.destroy();
+}
+
+async function loadAll() {
+    if (!currentSubject) return;
+    showToast('불러오는 중…');
+    try {
+        const [all, st] = await Promise.all([
+            api('adminGetAll',   {token, subjectKey: currentSubject}),
+            api('adminGetStats', {token, subjectKey: currentSubject})
+        ]);
+        allData = all; stats = st;
+        renderStats();
+        renderCharts();
+        populateFilters();
+        renderTable();
+        renderPending();
+        loadAllRepos();
+        loadStorage();
+        showToast('업데이트 완료');
+    } catch(e) {
+        showToast(e.message, 'err');
+        if (String(e.message).includes('인증')) setTimeout(logout, 1500);
+    }
+}
+
+/* ── 저장 용량 한도 조정 ── */
+let _lastStorage = null;
+async function changeQuota() {
+    const cur = _lastStorage ? _lastStorage.quotaGB : 2048;
+    const used = _lastStorage ? _lastStorage.usedGB.toFixed(1) : '?';
+    const input = prompt(
+        `제출 시스템에 할당할 저장 용량(GB)을 입력하세요.\n\n` +
+        `· 현재 한도: ${Number(cur).toLocaleString()} GB\n` +
+        `· 현재 사용: ${used} GB\n` +
+        `· 학교 Drive 총량: 5,120 GB (5TB)\n\n` +
+        `예) 2048 = 2TB · 3072 = 3TB · 1024 = 1TB · 0 = 무제한`,
+        String(cur)
+    );
+    if (input === null) return;
+    const n = parseInt(input.trim());
+    if (isNaN(n) || n < 0) return showToast('0 이상의 정수를 입력하세요', 'warn');
+    if (n > 5120) return showToast('5TB(5120GB)를 초과할 수 없습니다', 'warn');
+    if (_lastStorage && !_lastStorage.unlimited && n > 0 && n < Math.ceil(_lastStorage.usedGB)) {
+        if (!confirm(`새 한도(${n}GB)가 현재 사용량(${_lastStorage.usedGB.toFixed(1)}GB)보다 작습니다.\n이미 저장된 파일은 유지되지만, 이후 제출이 즉시 차단될 수 있습니다.\n계속할까요?`)) return;
+    }
+    try {
+        await api('adminSetQuota', {token, quotaGB: n}, 'POST');
+        showToast(`저장 용량 한도를 ${n === 0 ? '무제한' : n.toLocaleString()+'GB'}으로 변경`);
+        await loadStorage();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+/* ── 저장 용량 사용량 ── */
+async function loadStorage() {
+    try {
+        const s = await api('adminGetStorage', {token});
+        _lastStorage = s;
+        const banner = $('storage-banner');
+        banner.classList.remove('hidden');
+        const usedGB = s.usedGB.toFixed(1);
+        if (s.unlimited) {
+            $('storage-label').textContent = `${usedGB} GB 사용 (무제한)`;
+            $('storage-bar').style.width = '0%';
+            $('storage-detail').textContent = `quotaGB=0 (무제한 설정) · 전체 ${usedGB} GB 사용 중`;
+            return;
+        }
+        const pct = Math.min(100, s.percent);
+        $('storage-label').textContent = `${usedGB} GB / ${s.quotaGB.toLocaleString()} GB (${pct.toFixed(1)}%)`;
+        $('storage-bar').style.width = pct + '%';
+        // 색상: 80% 주황, 95% 빨강
+        $('storage-bar').className = 'h-full transition-all ' +
+            (pct >= 95 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-emerald-500');
+        const top = s.perCourse.slice(0, 3).map(c => `${c.name.replace(/^\[.*?\]\s*/, '')} ${c.gb.toFixed(1)}GB`).join(' · ');
+        $('storage-detail').innerHTML = (pct >= 80 ? '<b class="text-amber-600">⚠ 용량 주의 — 외부 링크 제출 안내 권장</b> · ' : '')
+            + `과목별: ${top || '-'} · 한도는 config 시트 quotaGB에서 변경`;
+    } catch(e) { /* 용량 표시는 부가 기능 — 실패해도 무시 */ }
+}
+
+/* ── 팀별 GitHub 저장소 ── */
+async function loadAllRepos() {
+    if (!currentSubject) return;
+    const tbody = $('repo-tbody');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-4">불러오는 중…</td></tr>';
+    try {
+        const repos = await api('adminGetAllRepos', {token, subjectKey: currentSubject});
+        const reg = repos.filter(r => r.registered).length;
+        const unreg = repos.length - reg;
+        $('repo-count-badge').textContent = `${reg} / ${repos.length}`;
+        // 미등록 팀 자동 강조
+        if (unreg > 0) {
+            $('repo-warn-badge').textContent = `⚠ 미등록 ${unreg}팀`;
+            $('repo-warn-badge').classList.remove('hidden');
+            $('repo-hint').classList.remove('hidden');
+        } else {
+            $('repo-warn-badge').classList.add('hidden');
+            $('repo-hint').classList.add('hidden');
+        }
+        lucide.createIcons();
+        if (!repos.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-6">등록된 팀이 없습니다</td></tr>';
+            return;
+        }
+        tbody.innerHTML = repos.map(r => {
+            const isAuto = r.registeredBy === '_AUTO';
+            const status = r.registered
+                ? (isAuto
+                    ? '<span class="text-[10px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded">📌 자동 등록</span>'
+                    : '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">✓ 학생 등록</span>')
+                : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">미등록</span>';
+            const url = r.repoUrl
+                ? `<span class="font-mono text-[11px] text-slate-700 break-all">${escapeHtml(r.repoUrl)}</span>`
+                : '<span class="text-[11px] text-slate-300">-</span>';
+            const link = r.repoUrl
+                ? `<a href="${escapeHtml(r.repoUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[10px] font-bold bg-sky-100 hover:bg-sky-200 text-sky-700 px-2 py-1 rounded transition cursor-pointer"><i data-lucide="external-link" class="w-3 h-3"></i> GitHub</a>`
+                : '<span class="text-[10px] text-slate-300">-</span>';
+            const when = r.registeredAt ? new Date(r.registeredAt).toLocaleString('ko-KR') : '-';
+            return `<tr class="hover:bg-slate-50">
+                <td class="px-3 py-2 font-bold text-slate-800">${escapeHtml(r.teamName)}</td>
+                <td class="px-3 py-2 text-center text-slate-500">${r.memberCount}</td>
+                <td class="px-3 py-2">${status}</td>
+                <td class="px-3 py-2 max-w-[300px]">${url}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.registeredByName || '-')}</td>
+                <td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">${when}</td>
+                <td class="px-3 py-2 text-center">${link}</td>
+            </tr>`;
+        }).join('');
+        lucide.createIcons();
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-red-500 py-4">${escapeHtml(e.message)}</td></tr>`;
+    }
+}
+
+function renderStats() {
+    $('stat-students').textContent    = allData.students.length;
+    $('stat-submissions').textContent = stats.totalSubmissions;
+    $('stat-downloads').textContent   = stats.totalDownloads;
+    const activeWeeks = stats.perWeek.filter(w => w.uniqueStudents > 0).length;
+    $('stat-active-weeks').textContent = `${activeWeeks} / ${stats.subject.totalWeeks}`;
+}
+
+function renderCharts() {
+    if (chartWeek) chartWeek.destroy();
+    if (chartTeam) chartTeam.destroy();
+
+    chartWeek = new Chart($('chart-week'), {
+        type:'bar',
+        data: {
+            labels: stats.perWeek.map(w => w.week + '주'),
+            datasets:[{
+                label:'제출 인원', data: stats.perWeek.map(w => w.uniqueStudents),
+                backgroundColor:'#10b981', borderRadius:5
+            },{
+                label:'미제출', data: stats.perWeek.map(w => Math.max(0, allData.students.length - w.uniqueStudents)),
+                backgroundColor:'#e2e8f0', borderRadius:5
+            }]
+        },
+        options:{
+            responsive:true, maintainAspectRatio:false,
+            scales:{ x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{stepSize:1}} },
+            plugins:{ legend:{position:'bottom', labels:{font:{size:11}}} }
+        }
+    });
+
+    chartTeam = new Chart($('chart-team'), {
+        type:'bar',
+        data:{
+            labels: stats.teams.map(t => t.teamName),
+            datasets:[{
+                label:'제출 건수', data: stats.teams.map(t => t.submissions),
+                backgroundColor:'#8b5cf6', borderRadius:5
+            }]
+        },
+        options:{
+            responsive:true, maintainAspectRatio:false, indexAxis:'y',
+            scales:{ x:{beginAtZero:true, ticks:{stepSize:1}} },
+            plugins:{ legend:{display:false} }
+        }
+    });
+}
+
+function populateFilters() {
+    const wSel = $('filter-week');
+    wSel.innerHTML = '<option value="">전체 주차</option>';
+    for (let w=1; w<=stats.subject.totalWeeks; w++) {
+        wSel.innerHTML += `<option value="${w}">${w}주차</option>`;
+    }
+    const tSel = $('filter-team');
+    const teamSet = new Set(allData.students.map(s => s.teamName || '미배정'));
+    tSel.innerHTML = '<option value="">전체 팀</option>' +
+        [...teamSet].sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+}
+
+function renderTable() {
+    const wF = $('filter-week').value;
+    const tF = $('filter-team').value;
+    const kw = $('filter-keyword').value.trim().toLowerCase();
+    let rows = allData.submissions.slice();
+    if (wF) rows = rows.filter(r => String(r.week) === String(wF));
+    if (tF) rows = rows.filter(r => String(r.teamName || '미배정') === tF);
+    if (kw) rows = rows.filter(r => String(r.studentName).toLowerCase().includes(kw) || String(r.studentId).toLowerCase().includes(kw));
+    rows.sort((a,b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+    $('sub-count-badge').textContent = rows.length;
+    const tb = $('sub-tbody');
+    if (!rows.length) {
+        tb.innerHTML = '<tr><td colspan="8" class="text-center text-slate-400 py-6">조건에 해당하는 제출이 없습니다</td></tr>';
+        return;
+    }
+    tb.innerHTML = rows.map(r => `
+        <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">${new Date(r.submittedAt).toLocaleString('ko-KR')}</td>
+            <td class="px-3 py-2 text-center"><span class="text-[10px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded">${r.week}주</span></td>
+            <td class="px-3 py-2 font-bold text-slate-800">${escapeHtml(r.studentName)}</td>
+            <td class="px-3 py-2 font-mono text-slate-600">${escapeHtml(r.studentId)}</td>
+            <td class="px-3 py-2 text-slate-600">${escapeHtml(r.teamName || '-')}</td>
+            <td class="px-3 py-2 text-slate-700 max-w-[260px] truncate" title="${escapeHtml(r.fileName)}">${escapeHtml(r.fileName)}</td>
+            <td class="px-3 py-2 text-right text-slate-500 text-[11px]">${(Number(r.fileSize)/1024/1024).toFixed(2)} MB</td>
+            <td class="px-3 py-2 text-center whitespace-nowrap">
+                <button onclick="downloadFile('${r.fileId}')" class="px-2 py-0.5 bg-sky-100 hover:bg-sky-200 text-sky-700 text-[10px] font-bold rounded transition cursor-pointer">받기</button>
+                <button data-id="${escapeHtml(r.id)}" onclick="deleteSubmissionBtn(this)" class="px-2 py-0.5 bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-bold rounded transition cursor-pointer ml-1">삭제</button>
+            </td>
+        </tr>`).join('');
+}
+
+async function downloadFile(fileId) {
+    try {
+        const r = await api('adminDownload', {fileId, token});
+        window.open(r.url, '_blank');
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+/* data-id로 안전하게 조회 (작은따옴표 파손 방지) */
+function deleteSubmissionBtn(btn) {
+    const id = btn.dataset.id;
+    const sub = (allData.submissions || []).find(s => String(s.id) === String(id));
+    const name = sub ? sub.studentName : '';
+    const fileName = sub ? sub.fileName : '';
+    if (!confirm(`'${name}' 학생의 제출\n"${fileName}"\n을(를) 삭제하시겠습니까?\n(파일은 휴지통으로 이동, 기록은 영구 삭제)`)) return;
+    doDeleteSubmission(id);
+}
+
+async function doDeleteSubmission(id) {
+    try {
+        await api('adminDeleteSubmission', {submissionId:id, token});
+        showToast('삭제 완료');
+        await loadAll();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function renderPending() {
+    const area = $('pending-area');
+    if (!stats.perWeek.length) { area.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">데이터 없음</p>'; return; }
+
+    area.innerHTML = stats.perWeek.map(w => {
+        const submittedKeys = new Set(
+            allData.submissions.filter(s => Number(s.week) === w.week).map(s => s.studentName + '|' + s.studentId)
+        );
+        const pending = allData.students.filter(st => !submittedKeys.has(st.studentName + '|' + st.studentId));
+        return `
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-bold text-slate-800">${w.week}주차</span>
+                    <span class="text-[10px] font-bold ${w.rate>=80?'text-emerald-600 bg-emerald-100':w.rate>=50?'text-amber-600 bg-amber-100':w.rate>0?'text-red-600 bg-red-100':'text-slate-500 bg-slate-100'} px-2 py-0.5 rounded-full">제출률 ${w.rate}%</span>
+                    <span class="text-[10px] text-slate-500">제출 ${w.uniqueStudents}명 · 총 ${w.totalSubmissions}건</span>
+                </div>
+                <span class="text-[10px] text-slate-500">${pending.length}명 미제출</span>
+            </div>
+            ${pending.length === 0
+                ? '<span class="text-[11px] text-emerald-600 font-bold">✓ 전원 제출</span>'
+                : `<div class="flex flex-wrap gap-1.5">${pending.map(st => `<span class="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-md text-slate-700">${escapeHtml(st.studentName)} <span class="font-mono text-slate-400">${escapeHtml(st.studentId)}</span> ${st.teamName?'<span class="text-violet-500">'+escapeHtml(st.teamName)+'</span>':''}</span>`).join('')}</div>`}
+        </div>`;
+    }).join('');
+}
+
+function exportCSV() {
+    if (!allData) return;
+    const subjName = stats.subject.subjectName;
+    const rows = [['일시','과목','주차','이름','학번','팀','파일명','크기(MB)','메모']];
+    allData.submissions.forEach(s => rows.push([
+        new Date(s.submittedAt).toLocaleString('ko-KR'),
+        subjName, s.week, s.studentName, s.studentId, s.teamName,
+        s.fileName, (Number(s.fileSize)/1024/1024).toFixed(2), s.note || ''
+    ]));
+    const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), {href:url, download:`제출현황_${subjName}_${new Date().toISOString().slice(0,10)}.csv`});
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('CSV 저장 완료');
+}
+
+const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+
+/* ── 빠른 학생 추가 ── */
+function toggleAddStudent() {
+    const p = $('add-stu-panel');
+    const c = $('add-stu-chev');
+    const isHidden = p.classList.contains('hidden');
+    p.classList.toggle('hidden', !isHidden);
+    if (c) c.style.transform = isHidden ? 'rotate(180deg)' : '';
+    if (isHidden) {
+        const subj = subjects.find(s => s.subjectKey === currentSubject);
+        $('addst-target').textContent = subj ? subj.displayName : currentSubject || '-';
+        lucide.createIcons();
+    }
+}
+
+async function addStudent() {
+    if (!currentSubject) return showToast('과목을 먼저 선택하세요', 'warn');
+    const name  = $('addst-name').value.trim();
+    const id    = $('addst-id').value.trim();
+    const team  = $('addst-team').value.trim();
+    const email = $('addst-email').value.trim();
+    if (!name || !id) return showToast('이름과 학번은 필수', 'warn');
+    try {
+        await api('adminAddStudent', {
+            token, subjectKey: currentSubject,
+            studentName: name, studentId: id, teamName: team, email
+        }, 'POST');
+        showToast(`✓ ${name} (${id}) 추가됨${team?` · ${team}`:''}`);
+        $('addst-name').value=''; $('addst-id').value=''; $('addst-team').value=''; $('addst-email').value='';
+        await loadAll();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+/* ── 3중 통합 시스템 안내 토글 ── */
+function toggleIhelp() {
+    const panel = $('ihelp-panel');
+    const chev  = $('ihelp-chevron');
+    const isHidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !isHidden);
+    if (chev) chev.style.transform = isHidden ? 'rotate(180deg)' : '';
+    if (isHidden) lucide.createIcons();
+}
+
+/* ── INIT ── */
+lucide.createIcons();
+$('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
+const savedToken = sessionStorage.getItem('admin_token');
+if (savedToken && !isTokenExpired()) {
+    token = savedToken;
+    onLoginSuccess();
+} else if (savedToken) {
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token_at');
+    showToast('세션이 만료되어 다시 로그인이 필요합니다', 'warn');
+}
+</script>
+</body>
+</html>

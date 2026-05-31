@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>학생 사용 가이드 · 수업 통합 제출 시스템</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+    body { font-family:'Noto Sans KR',sans-serif; background:#f0f2fa; }
+    .card { break-inside: avoid; }
+    h2 { scroll-margin-top: 5rem; }
+    @media print {
+        body { background:white; }
+        .no-print { display:none !important; }
+        .print-break { page-break-before: always; }
+        .card { box-shadow:none !important; border:1px solid #e2e8f0 !important; }
+        a { color:#1e293b !important; text-decoration:none !important; }
+        main { max-width:100% !important; padding:0 !important; }
+    }
+    .step-num { width:1.5rem;height:1.5rem;border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;flex-shrink:0; }
+</style>
+</head>
+<body class="text-slate-800 antialiased">
+
+<!-- 상단 바 (인쇄 시 숨김) -->
+<header class="no-print bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="p-2 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-200 shrink-0">
+                <i data-lucide="book-open" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-lg font-bold text-slate-900 tracking-tight truncate">학생 사용 가이드</h1>
+                <p class="text-xs text-slate-500 truncate">수업 통합 제출 시스템</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+            <button onclick="window.print()" class="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg inline-flex items-center gap-1.5 transition cursor-pointer shadow-sm">
+                <i data-lucide="printer" class="w-3.5 h-3.5"></i> PDF로 저장 / 인쇄
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+    <!-- 표지 -->
+    <section class="bg-gradient-to-br from-indigo-600 to-violet-600 text-white p-8 rounded-3xl shadow-lg card">
+        <p class="text-sm font-semibold text-indigo-100 mb-1">수업 통합 제출 시스템</p>
+        <h1 class="text-3xl font-black tracking-tight mb-3">📚 학생 사용 가이드</h1>
+        <p class="text-sm text-indigo-100 leading-relaxed">이 수업은 <b class="text-white">3개 시스템</b>을 함께 사용합니다. 매주 정해진 순서대로 진행하면 됩니다.<br>처음 한 번만 익히면 이후엔 5분이면 끝납니다.</p>
+    </section>
+
+    <!-- 인쇄 안내 (화면에서만) -->
+    <div class="no-print bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
+        <i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5"></i>
+        <span><b>PDF로 저장하려면</b> 우상단 <b>[PDF로 저장 / 인쇄]</b> 버튼 → 인쇄 대화상자에서 <b>"PDF로 저장"</b> 선택. 종이 인쇄도 같은 버튼으로 가능합니다.</span>
+    </div>
+
+    <!-- 3중 시스템 -->
+    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm card">
+        <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="layout-grid" class="w-5 h-5 text-indigo-500"></i> 한눈에 보기 — 3중 시스템</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="border-2 border-slate-800 rounded-xl p-4">
+                <span class="text-[11px] font-bold bg-slate-800 text-white px-2 py-0.5 rounded">① GitHub 팀 저장소</span>
+                <p class="text-sm font-bold text-slate-800 mt-2">코드·문서를 팀 저장소에 올림</p>
+                <p class="text-xs text-slate-500 mt-1">매주 <b class="text-red-600">18:20</b>까지 commit·push</p>
+            </div>
+            <div class="border-2 border-emerald-500 rounded-xl p-4">
+                <span class="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded">② 과제 제출</span>
+                <p class="text-sm font-bold text-slate-800 mt-2">주차별 보고서·과제 제출</p>
+                <p class="text-xs text-slate-500 mt-1">공식 평가 채널 · 마감일 내</p>
+            </div>
+            <div class="border-2 border-amber-500 rounded-xl p-4">
+                <span class="text-[11px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded">③ 협업게시판</span>
+                <p class="text-sm font-bold text-slate-800 mt-2">발표 자료 공개·공유</p>
+                <p class="text-xs text-slate-500 mt-1">7주·14주 발표 직후</p>
+            </div>
+        </div>
+        <div class="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <p class="text-xs font-bold text-slate-600 mb-2">내가 받게 될 URL 3개</p>
+            <table class="w-full text-xs">
+                <tr class="border-b border-slate-200"><td class="py-1.5 font-bold">🔗 GitHub 저장소</td><td class="py-1.5 font-mono text-slate-500">.../team-maker/repo.html</td></tr>
+                <tr class="border-b border-slate-200"><td class="py-1.5 font-bold">📤 과제 제출</td><td class="py-1.5 font-mono text-slate-500">.../team-maker/submit.html</td></tr>
+                <tr><td class="py-1.5 font-bold">📋 설문/피드백</td><td class="py-1.5 font-mono text-slate-500">.../team-maker/survey.html</td></tr>
+            </table>
+            <p class="text-[10px] text-slate-400 mt-2">💡 정확한 전체 주소는 교수님 공지를 확인하세요.</p>
+        </div>
+    </section>
+
+    <!-- 공통 로그인 -->
+    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm card">
+        <h2 class="text-lg font-bold mb-2 flex items-center gap-2"><i data-lucide="key-round" class="w-5 h-5 text-indigo-500"></i> 공통 1단계 — 본인 확인 (로그인)</h2>
+        <p class="text-sm text-slate-600 mb-4">3개 페이지 모두 동일한 방식입니다. <b>비밀번호 없이</b> 본인 정보만 입력합니다.</p>
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-4">
+            <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600">
+                <span class="bg-white border border-slate-300 rounded-lg px-3 py-1.5">① 년도</span><span class="text-slate-300">→</span>
+                <span class="bg-white border border-slate-300 rounded-lg px-3 py-1.5">② 학기</span><span class="text-slate-300">→</span>
+                <span class="bg-white border border-slate-300 rounded-lg px-3 py-1.5">③ 과목</span><span class="text-slate-300">→</span>
+                <span class="bg-white border border-slate-300 rounded-lg px-3 py-1.5">④ 팀</span><span class="text-slate-300">→</span>
+                <span class="bg-white border border-slate-300 rounded-lg px-3 py-1.5">⑤ 이름</span><span class="text-slate-300">+</span>
+                <span class="bg-white border border-slate-300 rounded-lg px-3 py-1.5">⑥ 학번</span>
+                <span class="text-slate-300">→</span>
+                <span class="bg-indigo-600 text-white rounded-lg px-3 py-1.5">입장</span>
+            </div>
+        </div>
+        <ol class="text-sm text-slate-700 space-y-1.5 list-decimal ml-5">
+            <li><b>년도 → 학기 → 과목 → 팀</b> 순서로 선택하면 다음 칸이 자동으로 열립니다</li>
+            <li><b>이름</b>과 <b>학번</b>을 입력하고 <b>입장</b>(또는 Enter)</li>
+        </ol>
+        <div class="mt-4 bg-red-50 border border-red-200 rounded-xl p-3">
+            <p class="text-xs font-bold text-red-700 mb-1">⚠️ 자주 하는 실수</p>
+            <ul class="text-xs text-red-700 space-y-0.5 ml-3 list-disc">
+                <li>이름·학번이 교수님 명단과 <b>정확히 일치</b>해야 함 (띄어쓰기·오타 주의)</li>
+                <li>"명단에서 찾을 수 없습니다" → 오타이거나 팀을 잘못 선택한 경우</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- GitHub -->
+    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm card print-break">
+        <h2 class="text-lg font-bold mb-2 flex items-center gap-2"><span class="step-num bg-slate-800 text-white">①</span> GitHub 팀 저장소</h2>
+        <p class="text-sm text-slate-600 mb-4">팀이 코드·문서를 함께 저장하는 공간. 매주 실습 결과물을 올립니다(commit·push).</p>
+
+        <h3 class="text-sm font-bold text-slate-700 mb-2 mt-4">1주차 준비 (팀당 1회)</h3>
+        <ol class="text-sm text-slate-700 space-y-1 list-decimal ml-5">
+            <li>팀 대표가 GitHub에서 팀 저장소 생성 (교수님이 미리 만들 수도 있음)</li>
+            <li>팀원을 협업자로 추가: 저장소 → <code class="bg-slate-100 px-1 rounded text-xs">Settings → Collaborators</code></li>
+        </ol>
+
+        <h3 class="text-sm font-bold text-slate-700 mb-2 mt-4">저장소 주소 등록 (repo.html) — 아주 쉬움</h3>
+        <ol class="text-sm text-slate-700 space-y-1 list-decimal ml-5">
+            <li>로그인 후 <b>"우리 팀 GitHub 저장소"</b> 카드 확인</li>
+            <li><span class="text-sky-700 font-bold">📌 교수 사전 등록</span> / <span class="text-emerald-700 font-bold">✓ 등록됨</span> / <span class="text-amber-700 font-bold">미등록</span> 상태가 표시됨</li>
+            <li>미등록이면 다음 중 <b>편한 방법</b>으로 입력 후 <b>저장</b>:</li>
+        </ol>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mt-2">
+            <p class="text-xs font-bold text-emerald-800 mb-1.5">✨ 가장 쉬운 방법 — 계정명만 입력</p>
+            <p class="text-xs text-emerald-700 leading-relaxed">팀 대표의 GitHub <b>계정명만</b> 입력하면 (예: <code class="bg-white px-1 rounded">hong-gildong</code>) 권장 저장소명이 자동으로 붙어 <code class="bg-white px-1 rounded">https://github.com/hong-gildong/과목-team5</code> 처럼 완성됩니다. 입력하는 동안 <b>최종 주소 미리보기</b>가 표시됩니다.</p>
+            <p class="text-xs text-emerald-700 leading-relaxed mt-1.5">이미 만든 저장소가 있으면 <b>전체 주소를 그대로 붙여넣기</b> 하면 됩니다 (<code class="bg-white px-1 rounded">/tree/main</code> 같은 뒤 경로는 자동 정리).</p>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">💡 같은 팀원이면 누구나 등록·수정 가능, 변경 시 모든 팀원에게 자동 반영됩니다.</p>
+
+        <!-- ⭐ 용량 규약 -->
+        <div class="mt-4 bg-red-50 border-2 border-red-200 rounded-xl p-4">
+            <p class="text-sm font-bold text-red-700 mb-2">⚠️ 저장소 용량 규약 — 꼭 지키기</p>
+            <p class="text-xs text-red-700 mb-3">GitHub에는 <b>코드·문서(텍스트)만</b> 올립니다. 영상·대용량 파일을 직접 넣으면 용량 한도(팀당 약 1GB 권장)를 금방 초과합니다.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="bg-white border border-emerald-200 rounded-lg p-3">
+                    <p class="text-xs font-bold text-emerald-700 mb-1">✅ 저장소에 올림</p>
+                    <p class="text-xs text-slate-600">소스 코드 (.py·.js·.java …) · 문서 (.md·.txt·소형 docx/pdf) · 설정 파일</p>
+                </div>
+                <div class="bg-white border border-red-200 rounded-lg p-3">
+                    <p class="text-xs font-bold text-red-700 mb-1">❌ 안 올림 → 외부 링크</p>
+                    <p class="text-xs text-slate-600">영상·대형 PPT·이미지·데이터셋·빌드 산출물 → Drive/Release에 올리고 <b>링크만</b></p>
+                </div>
+            </div>
+            <p class="text-xs text-red-600 mt-2">💡 텍스트는 15주 누적해도 용량이 거의 안 늘어납니다. <b>대용량 바이너리만 빼면</b> 저장소가 가볍게 유지됩니다.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <p class="text-xs font-bold text-slate-600 mb-1">📁 권장 폴더 구조</p>
+                <pre class="text-[11px] font-mono text-slate-600 leading-relaxed">우리팀-저장소/
+├ week01/   (코드·문서)
+├ ... week15/
+├ links.md  (외부 링크 모음)
+└ .gitignore</pre>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <p class="text-xs font-bold text-slate-600 mb-1">🚫 .gitignore 예시</p>
+                <pre class="text-[11px] font-mono text-slate-600 leading-relaxed">*.mp4
+*.zip
+node_modules/
+dist/  build/</pre>
+            </div>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 mt-3">
+            <p class="text-xs font-bold text-slate-600 mb-1">💬 commit 메시지 형식</p>
+            <pre class="text-[11px] font-mono text-slate-600 leading-relaxed">[W3] 컨테이너 실습 완료   ·   형식: [W{주차}] 요약</pre>
+        </div>
+
+        <div class="mt-4 bg-red-50 border border-red-200 rounded-xl p-3">
+            <p class="text-xs font-bold text-red-700">⏰ 매주 18:20 마감</p>
+            <p class="text-xs text-red-700 mt-1">실습 종료 시각까지 commit·push 완료. 결석 시 <code class="bg-red-100 px-1 rounded">git clone</code> 후 본인 PC에서 재현하여 보고서 제출.</p>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-4 mt-3">
+            <p class="text-[10px] font-bold text-slate-400 mb-2">Git 기본 명령 (터미널)</p>
+            <pre class="text-[11px] font-mono text-emerald-300 leading-relaxed"># 처음 한 번 — 저장소 복제
+git clone https://github.com/계정/저장소.git
+
+# 매주 작업 후
+git add .
+git commit -m "[W3] 실습 내용 요약"
+git push</pre>
+            <p class="text-[10px] text-slate-400 mt-2">💡 명령어가 어렵다면 <b class="text-slate-200">GitHub Desktop</b> 앱으로 클릭만으로 가능합니다.</p>
+        </div>
+    </section>
+
+    <!-- 과제 제출 -->
+    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm card print-break">
+        <h2 class="text-lg font-bold mb-2 flex items-center gap-2"><span class="step-num bg-emerald-600 text-white">②</span> 과제 제출 (Smart Submission)</h2>
+        <p class="text-sm text-slate-600 mb-4">submit.html에서 주차별 보고서·과제를 제출합니다. <b>공식 평가 채널</b>입니다.</p>
+
+        <h3 class="text-sm font-bold text-slate-700 mb-2">주차 버튼 색상 = 마감 상태</h3>
+        <table class="w-full text-xs border border-slate-200 rounded-lg overflow-hidden mb-4">
+            <tr class="bg-slate-50 border-b border-slate-200"><td class="py-2 px-3 font-bold w-28">⚪ 회색</td><td class="py-2 px-3">정상 — 여유 있음</td></tr>
+            <tr class="border-b border-slate-200"><td class="py-2 px-3 font-bold">🟡 노랑</td><td class="py-2 px-3">주의 — 마감 3일 이내</td></tr>
+            <tr class="border-b border-slate-200"><td class="py-2 px-3 font-bold">🟠 주황 ⚠</td><td class="py-2 px-3"><b>임박 — 마감 24시간 이내</b></td></tr>
+            <tr class="border-b border-slate-200"><td class="py-2 px-3 font-bold">🔴 빨강</td><td class="py-2 px-3">마감 후 — 지연 제출 가능(늦음 표시)</td></tr>
+            <tr><td class="py-2 px-3 font-bold">⛔ 취소선</td><td class="py-2 px-3"><b>마감 — 제출 불가</b></td></tr>
+        </table>
+
+        <h3 class="text-sm font-bold text-slate-700 mb-2">제출 순서</h3>
+        <ol class="text-sm text-slate-700 space-y-1 list-decimal ml-5">
+            <li>로그인 → <b>주차 버튼</b> 클릭</li>
+            <li>파일 박스 <b>클릭</b> 또는 <b>끌어다 놓기</b> (최대 100MB, .exe·.bat 제외)</li>
+            <li>메모(선택) 입력 후 <b>제출하기</b></li>
+            <li>하단 <b>"제출 내역"</b>에서 확인 · <b>본인/팀원</b> 토글 · <b>받기</b>로 재다운로드</li>
+        </ol>
+
+        <div class="mt-4 bg-sky-50 border border-sky-200 rounded-xl p-3">
+            <p class="text-xs font-bold text-sky-700">🎬 시연 영상</p>
+            <p class="text-xs text-sky-700 mt-1">100MB 이하 → 직접 첨부 / 초과 시 → GitHub Release·Google Drive에 올린 후 <b>링크를 문서에 담아 제출</b></p>
+            <p class="text-xs text-sky-700 mt-1.5">🔄 같은 주차에 다시 제출하면 <b>이전 파일이 자동 교체</b>되어 최신 1개만 남습니다 (안심하고 수정 제출 가능).</p>
+        </div>
+    </section>
+
+    <!-- 설문 -->
+    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm card">
+        <h2 class="text-lg font-bold mb-2 flex items-center gap-2"><span class="step-num bg-sky-600 text-white">③</span> 설문 / 피드백</h2>
+        <p class="text-sm text-slate-600 mb-4">survey.html에서 수업 평가·동료 평가·설문에 응답합니다.</p>
+        <ol class="text-sm text-slate-700 space-y-1 list-decimal ml-5 mb-4">
+            <li>로그인 → <b>"참여 가능한 설문"</b>에서 설문 클릭</li>
+            <li>척도(1~5점 버튼) · 객관식 · 서술형 · 팀원 평가에 응답</li>
+            <li><b>응답 제출</b> 클릭</li>
+        </ol>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-violet-50 border border-violet-200 rounded-xl p-3">
+                <p class="text-xs font-bold text-violet-700">🅰️🅱️ 팀원 평가</p>
+                <p class="text-xs text-violet-700 mt-1">팀원 이름이 <b>자동 표시</b>됩니다(직접 입력 안 함). 짝 A/B로 나뉘며 본인은 제외. 진행도(<code class="bg-violet-100 px-1 rounded">2/3명</code>)로 확인.</p>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                <p class="text-xs font-bold text-slate-600">🔒 익명 설문</p>
+                <p class="text-xs text-slate-600 mt-1">"익명" 표시가 있으면 누가 응답했는지 <b>저장되지 않습니다.</b> 솔직하게 응답하세요.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 파일명 규약 -->
+    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm card">
+        <h2 class="text-lg font-bold mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-5 h-5 text-indigo-500"></i> 파일명·작성 규약 (꼭 지키기)</h2>
+        <table class="w-full text-xs border border-slate-200 rounded-lg overflow-hidden mb-3">
+            <tr class="bg-slate-50 border-b border-slate-200"><th class="py-2 px-3 text-left">종류</th><th class="py-2 px-3 text-left">형식 / 예시</th></tr>
+            <tr class="border-b border-slate-200"><td class="py-2 px-3 font-bold">개인 보고서</td><td class="py-2 px-3 font-mono">학번_이름_W{주차}_실습보고서.docx<br><span class="text-slate-400">예: 2022001234_홍길동_W3_실습보고서.docx</span></td></tr>
+            <tr class="border-b border-slate-200"><td class="py-2 px-3 font-bold">팀 산출물</td><td class="py-2 px-3 font-mono">팀명_W{주차}_{유형}.docx<br><span class="text-slate-400">예: 5팀_W3_과제1.docx</span></td></tr>
+            <tr><td class="py-2 px-3 font-bold">GitHub commit</td><td class="py-2 px-3 font-mono">[W{주차}] 요약</td></tr>
+        </table>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <p class="text-xs font-bold text-amber-800">📄 문서 본문 필수 항목</p>
+            <p class="text-xs text-amber-700 mt-1">모든 보고서에 <b>팀명 · 구성원(학번/이름) · 각자 역할</b>을 반드시 포함</p>
+        </div>
+    </section>
+
+    <!-- 매주 할 일 -->
+    <section class="bg-gradient-to-r from-indigo-50 to-violet-50 p-6 rounded-2xl border border-indigo-100 card">
+        <h2 class="text-lg font-bold mb-3 flex items-center gap-2"><i data-lucide="calendar-check" class="w-5 h-5 text-indigo-500"></i> 매주 해야 할 일</h2>
+        <div class="space-y-2 text-sm">
+            <div class="flex items-center gap-3 bg-white rounded-xl p-3 border border-slate-200"><span class="step-num bg-slate-800 text-white">1</span> <b>GitHub</b> — 코드·문서 commit·push <span class="text-red-600 font-bold ml-auto text-xs">18:20까지</span></div>
+            <div class="flex items-center gap-3 bg-white rounded-xl p-3 border border-slate-200"><span class="step-num bg-emerald-600 text-white">2</span> <b>과제 제출</b> — 보고서/과제 업로드 <span class="text-slate-500 ml-auto text-xs">마감일 확인</span></div>
+            <div class="flex items-center gap-3 bg-white rounded-xl p-3 border border-slate-200"><span class="step-num bg-sky-600 text-white">3</span> <b>설문 응답</b> / 발표 후 협업게시판 공유 <span class="text-slate-500 ml-auto text-xs">해당 주</span></div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm card print-break">
+        <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="help-circle" class="w-5 h-5 text-indigo-500"></i> 자주 묻는 질문</h2>
+        <div class="space-y-3 text-sm">
+            <div><p class="font-bold text-slate-800">Q. 비밀번호가 따로 있나요?</p><p class="text-slate-600 mt-0.5">없습니다. 이름(ID) + 학번(PW)으로 본인 확인합니다.</p></div>
+            <div><p class="font-bold text-slate-800">Q. "명단에서 찾을 수 없습니다"가 떠요.</p><p class="text-slate-600 mt-0.5">① 이름·학번 오타 ② 팀 잘못 선택 ③ 명단 미등록. 확인 후에도 안 되면 교수님께 문의.</p></div>
+            <div><p class="font-bold text-slate-800">Q. 파일이 100MB를 넘어요.</p><p class="text-slate-600 mt-0.5">영상은 GitHub Release·Google Drive에 올리고 링크로 제출하세요.</p></div>
+            <div><p class="font-bold text-slate-800">Q. 마감이 지났는데 제출할 수 있나요?</p><p class="text-slate-600 mt-0.5">🔴(지연 가능)이면 제출되나 늦음 기록, ⛔(마감)이면 불가. 교수님께 문의.</p></div>
+            <div><p class="font-bold text-slate-800">Q. 팀이 바뀌었어요.</p><p class="text-slate-600 mt-0.5">교수님이 명단 수정 시 자동 반영됩니다. 이전 제출물도 새 팀으로 함께 이동.</p></div>
+            <div><p class="font-bold text-slate-800">Q. 한 번 제출한 파일을 다시 올릴 수 있나요?</p><p class="text-slate-600 mt-0.5">같은 주차에 다시 제출하면 됩니다. 제출 내역에서 확인하세요.</p></div>
+            <div><p class="font-bold text-slate-800">Q. 모바일로도 되나요?</p><p class="text-slate-600 mt-0.5">됩니다. 스마트폰 브라우저에서도 동일하게 작동합니다.</p></div>
+        </div>
+    </section>
+
+    <!-- 문제 해결 -->
+    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm card">
+        <h2 class="text-lg font-bold mb-3 flex items-center gap-2"><i data-lucide="life-buoy" class="w-5 h-5 text-indigo-500"></i> 문제가 안 풀릴 때</h2>
+        <table class="w-full text-xs border border-slate-200 rounded-lg overflow-hidden">
+            <tr class="bg-slate-50 border-b border-slate-200"><th class="py-2 px-3 text-left">증상</th><th class="py-2 px-3 text-left">해결</th></tr>
+            <tr class="border-b border-slate-200"><td class="py-2 px-3">화면이 안 뜨거나 멈춤</td><td class="py-2 px-3">강제 새로고침 (Ctrl/⌘ + Shift + R)</td></tr>
+            <tr class="border-b border-slate-200"><td class="py-2 px-3">옛 화면이 보임</td><td class="py-2 px-3">강제 새로고침 또는 시크릿 창</td></tr>
+            <tr><td class="py-2 px-3">그래도 안 됨</td><td class="py-2 px-3">교수님께 화면 캡처와 함께 문의</td></tr>
+        </table>
+    </section>
+
+    <footer class="text-center text-xs text-slate-400 py-4">
+        수업 통합 제출 시스템 · 학생용 가이드 · 궁금한 점은 담당 교수님께 문의하세요
+    </footer>
+</main>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

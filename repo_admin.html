@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub 저장소 관리 · Smart Submission</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    body { font-family:'Noto Sans KR',sans-serif; background:#f0f2fa; }
+    #toast { transition:opacity .3s, transform .3s; }
+    #toast.hide { opacity:0; transform:translateY(8px) scale(.97); pointer-events:none; }
+    .stat-card { transition:transform .2s; }
+    .stat-card:hover { transform:translateY(-2px); }
+    th { position:sticky; top:0; background:#f8fafc; z-index:1; }
+</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen">
+
+<script>
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbw9k-9lYg9GivdUEG6pPODPxP5S4B5tONDT3q33GcO50vMAbymQ1v60O6xZA9m626KwUw/exec';
+</script>
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="p-2 bg-slate-800 text-white rounded-xl shadow-md shadow-slate-200 shrink-0">
+                <i data-lucide="github" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-lg font-bold text-slate-900 tracking-tight">GitHub 저장소 관리</h1>
+                <p class="text-xs text-slate-500 truncate">팀별 저장소 등록·수정·모니터링 (교수용)</p>
+            </div>
+        </div>
+        <div id="header-actions" class="hidden items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            <select id="year-sel" onchange="onYearChange()" class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"></select>
+            <select id="semester-sel" onchange="onSemesterChange()" disabled class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"></select>
+            <select id="subject-sel" onchange="onSubjectChange()" disabled class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 max-w-[220px] truncate focus:outline-none focus:ring-2 focus:ring-slate-400"></select>
+            <button onclick="loadAll()" class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg cursor-pointer" title="새로고침">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="exportCSV()" class="py-1.5 px-3 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-sm" title="CSV 내보내기">
+                <i data-lucide="file-down" class="w-3.5 h-3.5"></i> CSV
+            </button>
+            <a href="admin.html" class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg cursor-pointer inline-flex items-center" title="제출 대시보드로">
+                <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i>
+            </a>
+            <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-red-500 transition cursor-pointer" title="로그아웃">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<div id="toast" class="hide fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2 min-w-max">
+    <i id="toast-icon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-msg">완료</span>
+</div>
+
+<!-- 로그인 -->
+<div id="login-screen" class="fixed inset-0 bg-slate-100 flex items-center justify-center z-40 p-4">
+    <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+        <div class="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div class="p-2 bg-slate-800 text-white rounded-xl">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h2 class="text-sm font-bold">GitHub 저장소 관리자 로그인</h2>
+                <p class="text-[10px] text-slate-500">교수님 비밀번호를 입력하세요</p>
+            </div>
+        </div>
+        <input id="pw-input" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminLogin()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:bg-white transition mb-3">
+        <button onclick="adminLogin()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2">
+            <i data-lucide="log-in" class="w-4 h-4"></i> 로그인
+        </button>
+    </div>
+</div>
+
+<main id="main-area" class="hidden max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+    <!-- 통계 카드 -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                <i data-lucide="users" class="w-3 h-3"></i> 전체 팀
+            </div>
+            <div class="text-2xl font-bold text-slate-800" id="stat-total">-</div>
+        </div>
+        <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="text-[10px] font-bold text-emerald-500 uppercase mb-1 flex items-center gap-1">
+                <i data-lucide="check-circle-2" class="w-3 h-3"></i> 학생 등록
+            </div>
+            <div class="text-2xl font-bold text-emerald-600" id="stat-student">-</div>
+        </div>
+        <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="text-[10px] font-bold text-sky-500 uppercase mb-1 flex items-center gap-1">
+                <i data-lucide="zap" class="w-3 h-3"></i> 교수 자동
+            </div>
+            <div class="text-2xl font-bold text-sky-600" id="stat-auto">-</div>
+        </div>
+        <div class="stat-card bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="text-[10px] font-bold text-amber-500 uppercase mb-1 flex items-center gap-1">
+                <i data-lucide="alert-circle" class="w-3 h-3"></i> 미등록
+            </div>
+            <div class="text-2xl font-bold text-amber-600" id="stat-missing">-</div>
+        </div>
+    </section>
+
+    <!-- 일괄 등록 안내 -->
+    <section id="bulk-hint" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+        <i data-lucide="info" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+        <div class="text-xs text-amber-800 flex-1">
+            <p class="font-bold mb-1">미등록 팀이 있습니다. 일괄 자동 등록 권장:</p>
+            <p class="text-[11px] leading-relaxed">Google Sheets에서 <code class="bg-amber-100 px-1.5 py-0.5 rounded font-mono">🎓 제출 시스템 → 🔗 팀 저장소 일괄 등록 (자동 세팅)</code> 메뉴 사용. URL 패턴 (<code class="bg-amber-100 px-1 rounded">{N}</code>=팀번호) 한 줄로 모든 팀 자동 등록 가능.</p>
+        </div>
+    </section>
+
+    <!-- 저장소 표 -->
+    <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <h3 class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <i data-lucide="github" class="w-3.5 h-3.5"></i> 팀별 GitHub 저장소
+            </h3>
+            <input id="filter-keyword" type="text" placeholder="팀명·URL 검색" oninput="renderTable()" class="px-2 py-1 text-[11px] bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 w-32">
+        </div>
+        <div class="overflow-x-auto border border-slate-100 rounded-xl">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase">
+                    <tr>
+                        <th class="text-left px-3 py-2 font-bold">팀</th>
+                        <th class="text-center px-3 py-2 font-bold">인원</th>
+                        <th class="text-left px-3 py-2 font-bold">상태</th>
+                        <th class="text-left px-3 py-2 font-bold">저장소 URL</th>
+                        <th class="text-left px-3 py-2 font-bold">등록자</th>
+                        <th class="text-left px-3 py-2 font-bold">등록일</th>
+                        <th class="text-center px-3 py-2 font-bold">작업</th>
+                    </tr>
+                </thead>
+                <tbody id="repo-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 인라인 편집 모달 -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[80] flex items-center justify-center p-4" onclick="if(event.target===this)closeEditModal()">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <h3 class="text-sm font-bold flex items-center gap-2"><i data-lucide="edit" class="w-4 h-4"></i> 저장소 URL 수정</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-red-500 text-lg leading-none cursor-pointer">×</button>
+            </div>
+            <div class="p-5">
+                <p class="text-xs text-slate-500 mb-2">팀: <span id="edit-team-label" class="font-bold text-slate-700"></span></p>
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 mb-2">
+                    <p class="text-[10px] text-slate-500 leading-relaxed mb-1.5">💡 <b>계정명만</b> 입력하면 권장 저장소명이 자동으로 붙습니다. 전체 주소 붙여넣기도 가능.</p>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-[10px] text-slate-500">권장:</span>
+                        <code id="edit-reco-name" class="text-[10px] font-mono bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-700"></code>
+                    </div>
+                </div>
+                <input id="edit-url" type="text" placeholder="예: myorg  또는  https://github.com/myorg/iot-5" oninput="updateEditPreview()" onkeydown="if(event.key==='Enter')saveEdit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-slate-500 mb-1.5">
+                <div id="edit-preview" class="hidden text-[11px] mb-2 px-2.5 py-1.5 rounded-lg"></div>
+                <div class="flex gap-2">
+                    <button onclick="saveEdit()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold rounded-lg cursor-pointer inline-flex items-center justify-center gap-1.5">
+                        <i data-lucide="save" class="w-3.5 h-3.5"></i> 저장
+                    </button>
+                    <button onclick="closeEditModal()" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-lg cursor-pointer">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+let token = null;
+let subjects = [];
+let currentSubject = null;
+let repos = [];
+let editingTeam = null;
+let toastTimer = null;
+const TOKEN_TTL_MS = 4 * 60 * 60 * 1000;
+const $ = id => document.getElementById(id);
+
+function showToast(msg, type='ok') {
+    clearTimeout(toastTimer);
+    const t=$('toast'), ico=$('toast-icon'), txt=$('toast-msg');
+    ico.setAttribute('data-lucide', type==='warn'?'alert-triangle':type==='err'?'x-circle':'check-circle');
+    ico.className = `w-4 h-4 ${type==='warn'?'text-amber-400':type==='err'?'text-red-400':'text-emerald-400'}`;
+    txt.textContent = msg; lucide.createIcons({nodes:[ico]});
+    t.classList.remove('hide');
+    toastTimer = setTimeout(() => t.classList.add('hide'), 3500);
+}
+
+async function api(action, params={}, method='GET') {
+    if (APPS_URL.startsWith('PASTE_')) throw new Error('APPS_URL 설정이 필요합니다');
+    if (method === 'GET') {
+        const url = new URL(APPS_URL);
+        url.searchParams.set('action', action);
+        Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+        const r = await fetch(url.toString(), {method:'GET', redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    } else {
+        const fd = new FormData();
+        fd.append('action', action);
+        Object.entries(params).forEach(([k,v]) => fd.append(k, v));
+        const r = await fetch(APPS_URL, {method:'POST', body:fd, redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    }
+}
+
+async function adminLogin() {
+    const pw = $('pw-input').value.trim();
+    if (!pw) return showToast('비밀번호 입력', 'warn');
+    try {
+        const r = await api('adminLogin', {password: pw});
+        token = r.token;
+        sessionStorage.setItem('admin_token', token);
+        sessionStorage.setItem('admin_token_at', String(Date.now()));
+        await onLoginSuccess();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function logout() {
+    token = null; currentSubject = null;
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token_at');
+    sessionStorage.removeItem('admin_subject');
+    location.reload();
+}
+
+function isTokenExpired() {
+    const at = parseInt(sessionStorage.getItem('admin_token_at') || '0');
+    return !at || (Date.now() - at) > TOKEN_TTL_MS;
+}
+
+async function onLoginSuccess() {
+    $('login-screen').classList.add('hidden');
+    $('main-area').classList.remove('hidden');
+    $('header-actions').classList.remove('hidden');
+    $('header-actions').classList.add('flex');
+    try {
+        subjects = await api('getSubjects');
+        if (!subjects.length) {
+            $('year-sel').innerHTML = '<option value="">등록된 과목 없음</option>';
+            return;
+        }
+        const years = [...new Set(subjects.map(s => s.year))].sort((a,b) => b-a);
+        $('year-sel').innerHTML = years.map(y => `<option value="${y}">${y}년</option>`).join('');
+        const saved = JSON.parse(sessionStorage.getItem('admin_filter') || '{}');
+        const initYear = (saved.year && years.includes(saved.year)) ? saved.year : years[0];
+        $('year-sel').value = String(initYear);
+        await onYearChange(saved);
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+async function onYearChange(saved) {
+    const y = parseInt($('year-sel').value);
+    const sems = [...new Set(subjects.filter(s => s.year === y).map(s => s.semester))].sort();
+    $('semester-sel').innerHTML = sems.map(s => `<option value="${s}">${s}학기</option>`).join('');
+    $('semester-sel').disabled = !sems.length;
+    if (sems.length) {
+        const initSem = (saved && saved.semester && sems.includes(saved.semester)) ? saved.semester : sems[0];
+        $('semester-sel').value = String(initSem);
+        await onSemesterChange(saved);
+    }
+}
+
+async function onSemesterChange(saved) {
+    const y = parseInt($('year-sel').value);
+    const s = parseInt($('semester-sel').value);
+    const cands = subjects.filter(x => x.year === y && x.semester === s);
+    $('subject-sel').innerHTML = cands.map(c => `<option value="${c.subjectKey}">${escapeHtml(c.subjectName)}</option>`).join('');
+    $('subject-sel').disabled = !cands.length;
+    if (cands.length) {
+        const initKey = (saved && saved.subjectKey && cands.find(c => c.subjectKey === saved.subjectKey)) ? saved.subjectKey : cands[0].subjectKey;
+        $('subject-sel').value = initKey;
+        await onSubjectChange();
+    }
+}
+
+async function onSubjectChange() {
+    currentSubject = $('subject-sel').value;
+    sessionStorage.setItem('admin_filter', JSON.stringify({
+        year: parseInt($('year-sel').value),
+        semester: parseInt($('semester-sel').value),
+        subjectKey: currentSubject
+    }));
+    await loadAll();
+}
+
+async function loadAll() {
+    if (!currentSubject) return;
+    showToast('불러오는 중…');
+    try {
+        repos = await api('adminGetAllRepos', {token, subjectKey: currentSubject});
+        renderStats();
+        renderTable();
+        showToast('업데이트 완료');
+    } catch(e) {
+        showToast(e.message, 'err');
+        if (String(e.message).includes('인증')) setTimeout(logout, 1500);
+    }
+}
+
+function renderStats() {
+    const total = repos.length;
+    const registered = repos.filter(r => r.registered);
+    const auto = registered.filter(r => r.registeredBy === '_AUTO').length;
+    const student = registered.length - auto;
+    const missing = total - registered.length;
+    $('stat-total').textContent   = total;
+    $('stat-student').textContent = student;
+    $('stat-auto').textContent    = auto;
+    $('stat-missing').textContent = missing;
+    $('bulk-hint').classList.toggle('hidden', missing === 0);
+    lucide.createIcons();
+}
+
+function renderTable() {
+    const kw = $('filter-keyword').value.trim().toLowerCase();
+    let rows = repos.slice();
+    if (kw) rows = rows.filter(r =>
+        String(r.teamName).toLowerCase().includes(kw) ||
+        String(r.repoUrl||'').toLowerCase().includes(kw));
+    const tb = $('repo-tbody');
+    if (!rows.length) {
+        tb.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-6">데이터 없음</td></tr>';
+        return;
+    }
+    tb.innerHTML = rows.map(r => {
+        const isAuto = r.registeredBy === '_AUTO';
+        const status = r.registered
+            ? (isAuto
+                ? '<span class="text-[10px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded">📌 자동</span>'
+                : '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">✓ 학생</span>')
+            : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">미등록</span>';
+        const url = r.repoUrl
+            ? `<span class="font-mono text-[11px] text-slate-700 break-all">${escapeHtml(r.repoUrl)}</span>`
+            : '<span class="text-[11px] text-slate-300">-</span>';
+        const when = r.registeredAt ? new Date(r.registeredAt).toLocaleString('ko-KR') : '-';
+        const actions = r.repoUrl
+            ? `<a href="${escapeHtml(r.repoUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[10px] font-bold bg-sky-100 hover:bg-sky-200 text-sky-700 px-2 py-1 rounded transition cursor-pointer" title="GitHub 바로가기"><i data-lucide="external-link" class="w-3 h-3"></i></a>
+                <button data-team="${escapeHtml(r.teamName)}" onclick="editRepoBtn(this)" class="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded transition cursor-pointer ml-1" title="수정"><i data-lucide="edit" class="w-3 h-3"></i></button>`
+            : `<button data-team="${escapeHtml(r.teamName)}" onclick="editRepoBtn(this)" class="inline-flex items-center gap-1 text-[10px] font-bold bg-violet-100 hover:bg-violet-200 text-violet-700 px-2 py-1 rounded transition cursor-pointer" title="등록"><i data-lucide="plus" class="w-3 h-3"></i> 등록</button>`;
+        return `<tr class="hover:bg-slate-50">
+            <td class="px-3 py-2 font-bold text-slate-800">${escapeHtml(r.teamName)}</td>
+            <td class="px-3 py-2 text-center text-slate-500">${r.memberCount}</td>
+            <td class="px-3 py-2">${status}</td>
+            <td class="px-3 py-2 max-w-[280px]">${url}</td>
+            <td class="px-3 py-2 text-slate-600">${escapeHtml(r.registeredByName || '-')}</td>
+            <td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">${when}</td>
+            <td class="px-3 py-2 text-center whitespace-nowrap">${actions}</td>
+        </tr>`;
+    }).join('');
+    lucide.createIcons();
+}
+
+/* 버튼의 data-team으로 안전하게 팀명 추출 (작은따옴표 파손 방지) */
+function editRepoBtn(btn) {
+    const teamName = btn.dataset.team;
+    const r = repos.find(x => String(x.teamName) === String(teamName));
+    editRepo(teamName, r ? (r.repoUrl || '') : '');
+}
+
+function editRepo(teamName, currentUrl) {
+    editingTeam = teamName;
+    $('edit-team-label').textContent = teamName;
+    $('edit-url').value = currentUrl || '';
+    $('edit-reco-name').textContent = recommendedRepoName(teamName);
+    $('edit-modal').classList.remove('hidden');
+    updateEditPreview();
+    lucide.createIcons();
+    setTimeout(() => $('edit-url').focus(), 100);
+}
+
+function closeEditModal() {
+    $('edit-modal').classList.add('hidden');
+    editingTeam = null;
+}
+
+/* 권장 저장소명: 과목키 + 팀번호 */
+function recommendedRepoName(teamName) {
+    const teamNum = (String(teamName || '').match(/\d+/) || [''])[0];
+    const base = String(currentSubject || 'class').replace(/[^a-zA-Z0-9-]/g, '');
+    return teamNum ? `${base}-team${teamNum}` : `${base}-${String(teamName).replace(/[^a-zA-Z0-9-]/g,'') || 'team'}`;
+}
+
+function normalizeRepoInput(raw, teamName) {
+    let s = String(raw || '').trim();
+    if (!s) return '';
+    s = s.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+    if (s.toLowerCase().startsWith('github.com/')) s = s.substring('github.com/'.length);
+    const parts = s.split('/').filter(p => p);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return `https://github.com/${parts[0]}/${recommendedRepoName(teamName)}`;
+    return `https://github.com/${parts[0]}/${parts[1]}`;
+}
+
+function updateEditPreview() {
+    const raw = $('edit-url').value.trim();
+    const box = $('edit-preview');
+    if (!raw) { box.classList.add('hidden'); return; }
+    const url = normalizeRepoInput(raw, editingTeam);
+    box.classList.remove('hidden');
+    const valid = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(url);
+    if (valid) {
+        box.className = 'text-[11px] mb-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 break-all';
+        box.innerHTML = `→ 등록될 주소: <b>${escapeHtml(url)}</b>`;
+    } else {
+        box.className = 'text-[11px] mb-2 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700';
+        box.textContent = '주소 형식 확인 (계정명만 또는 github.com/계정/저장소)';
+    }
+}
+
+async function saveEdit() {
+    const raw = $('edit-url').value.trim();
+    if (!editingTeam) return;
+    if (!raw) return showToast('계정명 또는 주소를 입력하세요', 'warn');
+    const url = normalizeRepoInput(raw, editingTeam);
+    if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(url))
+        return showToast('주소 형식 확인 (계정명만 또는 github.com/계정/저장소)', 'warn');
+    try {
+        const res = await api('adminSetTeamRepo', {
+            token, subjectKey: currentSubject,
+            teamName: editingTeam, repoUrl: url
+        }, 'POST');
+        showToast(res.action === 'created' ? `${editingTeam} 저장소 등록 완료` : `${editingTeam} 저장소 수정 완료`);
+        closeEditModal();
+        await loadAll();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function exportCSV() {
+    if (!repos.length) return showToast('데이터 없음', 'warn');
+    const subjName = (subjects.find(s => s.subjectKey === currentSubject) || {}).subjectName || currentSubject;
+    const rows = [['과목','팀','인원','상태','저장소 URL','등록자','등록일']];
+    repos.forEach(r => {
+        const status = r.registered ? (r.registeredBy === '_AUTO' ? '자동' : '학생') : '미등록';
+        rows.push([subjName, r.teamName, r.memberCount, status,
+            r.repoUrl || '', r.registeredByName || '',
+            r.registeredAt ? new Date(r.registeredAt).toLocaleString('ko-KR') : '']);
+    });
+    const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), {href:url, download:`GitHub저장소_${subjName}_${new Date().toISOString().slice(0,10)}.csv`});
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('CSV 저장 완료');
+}
+
+const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+
+/* INIT */
+lucide.createIcons();
+const savedToken = sessionStorage.getItem('admin_token');
+if (savedToken && !isTokenExpired()) {
+    token = savedToken;
+    onLoginSuccess();
+} else if (savedToken) {
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token_at');
+    showToast('세션 만료 — 다시 로그인', 'warn');
+}
+</script>
+</body>
+</html>
