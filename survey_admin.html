@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>설문 관리 · Smart Submission</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    body { font-family:'Noto Sans KR',sans-serif; background:#f0f2fa; }
+    #toast { transition:opacity .3s, transform .3s; }
+    #toast.hide { opacity:0; transform:translateY(8px) scale(.97); pointer-events:none; }
+    .q-card { transition:all .15s; }
+    .q-card:hover { border-color:#94a3b8; }
+    .type-pill { transition:all .15s; cursor:pointer; }
+    .type-pill.selected { background:#0ea5e9 !important; color:white !important; }
+</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen">
+
+<script>
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbw9k-9lYg9GivdUEG6pPODPxP5S4B5tONDT3q33GcO50vMAbymQ1v60O6xZA9m626KwUw/exec';
+</script>
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="p-2 bg-sky-600 text-white rounded-xl shadow-md shadow-sky-200 shrink-0">
+                <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-lg font-bold text-slate-900 tracking-tight">설문 관리</h1>
+                <p class="text-xs text-slate-500 truncate">설문 작성 · 결과 분석</p>
+            </div>
+        </div>
+        <div id="header-actions" class="hidden items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            <select id="year-sel" onchange="onYearChange()" class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"></select>
+            <select id="semester-sel" onchange="onSemesterChange()" disabled class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-400"></select>
+            <select id="subject-sel" onchange="onSubjectChange()" disabled class="px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 max-w-[220px] truncate focus:outline-none focus:ring-2 focus:ring-sky-400"></select>
+            <button onclick="newSurvey()" class="py-1.5 px-3 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg inline-flex items-center gap-1.5 transition cursor-pointer shadow-sm">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i> 새 설문
+            </button>
+            <button onclick="loadList()" class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg cursor-pointer" title="새로고침">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+            <a href="admin.html" class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg cursor-pointer inline-flex items-center" title="제출 대시보드로">
+                <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i>
+            </a>
+            <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-red-500 transition cursor-pointer" title="로그아웃">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<div id="toast" class="hide fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2 min-w-max">
+    <i id="toast-icon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-msg">완료</span>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" class="fixed inset-0 bg-slate-100 flex items-center justify-center z-40 p-4">
+    <div class="w-full max-w-sm bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+        <div class="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div class="p-2 bg-sky-600 text-white rounded-xl">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h2 class="text-sm font-bold">설문 관리자 로그인</h2>
+                <p class="text-[10px] text-slate-500">교수님 비밀번호를 입력하세요</p>
+            </div>
+        </div>
+        <input id="pw-input" type="password" placeholder="••••••••" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition mb-3">
+        <button onclick="adminLogin()" class="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2">
+            <i data-lucide="log-in" class="w-4 h-4"></i> 로그인
+        </button>
+    </div>
+</div>
+
+<main id="main-area" class="hidden max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+    <!-- 3중 통합 시스템 안내 -->
+    <section class="bg-gradient-to-r from-slate-50 via-emerald-50/40 to-amber-50/40 border border-emerald-100 rounded-2xl overflow-hidden">
+        <button onclick="toggleIhelp()" class="w-full px-4 py-3 flex items-center justify-between hover:bg-white/40 transition cursor-pointer text-left">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-base">📚</span>
+                <span class="text-sm font-bold text-slate-700">3중 통합 시스템 — 산출물 제출 채널</span>
+                <span class="hidden lg:inline text-[10px] text-slate-500">GitHub → Smart Submission → 협업게시판</span>
+                <span class="text-[10px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded">📋 본 페이지: 설문 관리 (교수)</span>
+            </div>
+            <i data-lucide="chevron-down" id="ihelp-chevron" class="w-4 h-4 text-slate-500 transition-transform shrink-0"></i>
+        </button>
+        <div id="ihelp-panel" class="hidden px-4 pb-4 pt-2 border-t border-emerald-100">
+            <p class="text-xs text-slate-600 mb-3">본 페이지는 설문/피드백 관리 화면입니다. 3중 시스템 본체는 아래 카드 참고.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div class="bg-white p-3 rounded-xl border border-slate-200">
+                    <span class="text-[10px] font-bold bg-slate-800 text-white px-2 py-0.5 rounded">① GitHub</span>
+                    <p class="text-xs font-bold text-slate-700 mt-1.5">팀 저장소 commit·push</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-emerald-200">
+                    <span class="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded">② Smart Submission</span>
+                    <p class="text-xs font-bold text-slate-700 mt-1.5">평가 채널</p>
+                    <a href="admin.html" class="text-[10px] text-emerald-700 font-bold hover:underline mt-1 inline-flex items-center gap-1">
+                        제출 대시보드 <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+                    </a>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-amber-200">
+                    <span class="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded">③ 협업게시판</span>
+                    <p class="text-xs font-bold text-slate-700 mt-1.5">시연 영상·자료 공개</p>
+                    <a href="https://script.google.com/macros/s/AKfycbz9o-9fIRA21I9YLYFuvGPhlLY6LtrRBR4yyzFJGFpfRmBM_4X9_TKo0SebDmOuLyMz/exec" target="_blank" rel="noopener" class="text-[10px] text-amber-700 font-bold hover:underline mt-1 inline-flex items-center gap-1">
+                        바로가기 <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 설문 목록 뷰 -->
+    <section id="view-list" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <h3 class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <i data-lucide="list" class="w-3.5 h-3.5"></i> 설문 목록
+                <span id="survey-count-badge" class="ml-1 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full font-bold text-slate-600">0</span>
+            </h3>
+        </div>
+        <div id="list-area" class="space-y-2"></div>
+    </section>
+
+    <!-- 템플릿 갤러리 뷰 -->
+    <section id="view-templates" class="hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+            <h3 class="text-sm font-bold flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-4 h-4"></i> 템플릿 선택
+            </h3>
+            <button onclick="cancelEdit()" class="text-xs text-slate-500 hover:text-red-500 inline-flex items-center gap-1 cursor-pointer">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i> 닫기
+            </button>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">원하는 템플릿 카드를 클릭하면 설문 제목·유형·질문이 자동으로 채워집니다. 이후 자유롭게 수정·추가·삭제하실 수 있습니다.</p>
+        <div id="templates-area" class="space-y-6"></div>
+    </section>
+
+    <!-- 설문 작성/수정 뷰 -->
+    <section id="view-edit" class="hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <h3 id="edit-title-label" class="text-sm font-bold flex items-center gap-2">
+                <i data-lucide="edit" class="w-4 h-4"></i> 새 설문 작성
+            </h3>
+            <button onclick="cancelEdit()" class="text-xs text-slate-500 hover:text-red-500 inline-flex items-center gap-1 cursor-pointer">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i> 닫기
+            </button>
+        </div>
+
+        <!-- 메타 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <div class="md:col-span-2">
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">제목 *</label>
+                <input id="ed-title" type="text" placeholder="예: 2026-2학기 중간 강의 평가" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">설명 (선택)</label>
+                <textarea id="ed-desc" rows="2" placeholder="학생들에게 보여줄 안내문" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"></textarea>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">유형</label>
+                <select id="ed-type" onchange="onSurveyTypeChange()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <option value="evaluation">수업 평가</option>
+                    <option value="peer">동료 평가 (팀원 자동 평가)</option>
+                    <option value="general" selected>일반 설문</option>
+                    <option value="selfreview">자기 성찰</option>
+                </select>
+                <p id="ed-type-hint" class="hidden text-[10px] text-orange-600 mt-1 font-semibold">
+                    <i data-lucide="info" class="w-3 h-3 inline"></i> 척도·텍스트 질문이 [팀원별]로 자동 추가됩니다
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 mb-1">익명</label>
+                    <select id="ed-anon" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="no">실명</option>
+                        <option value="yes">익명</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 mb-1">재응답</label>
+                    <select id="ed-multi" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="no">한 번</option>
+                        <option value="yes">여러 번</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">시작일 (선택)</label>
+                <input id="ed-start" type="date" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">종료일 (선택)</label>
+                <input id="ed-end" type="date" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+            </div>
+            <div class="md:col-span-2">
+                <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <input id="ed-active" type="checkbox" checked> 활성 (학생에게 즉시 노출)
+                </label>
+            </div>
+        </div>
+
+        <!-- 질문 목록 -->
+        <div class="border-t border-slate-100 pt-4 mb-4">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                    <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> 질문
+                    <span id="q-count-badge" class="ml-1 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-full font-bold text-slate-600">0</span>
+                </h4>
+                <button onclick="addQuestion()" class="py-1 px-2.5 bg-sky-100 hover:bg-sky-200 text-sky-700 text-[11px] font-bold rounded-lg inline-flex items-center gap-1 transition cursor-pointer">
+                    <i data-lucide="plus" class="w-3 h-3"></i> 질문 추가
+                </button>
+            </div>
+            <div id="questions-area" class="space-y-2"></div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="save-btn" onclick="saveSurvey()" class="flex-1 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i data-lucide="save" class="w-4 h-4"></i> 저장
+            </button>
+            <button onclick="cancelEdit()" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded-xl transition cursor-pointer">취소</button>
+        </div>
+    </section>
+
+    <!-- 결과 분석 뷰 -->
+    <section id="view-results" class="hidden bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div>
+                <h3 id="res-title" class="text-base font-bold"></h3>
+                <p id="res-meta" class="text-[10px] text-slate-500 mt-0.5"></p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="peer-analysis-btn" onclick="togglePeerAnalysis()" class="hidden py-1.5 px-3 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer">
+                    <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i> 기여도 분석
+                </button>
+                <button onclick="exportResultsCSV()" class="py-1.5 px-3 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-lg inline-flex items-center gap-1.5 cursor-pointer">
+                    <i data-lucide="file-down" class="w-3.5 h-3.5"></i> CSV
+                </button>
+                <button onclick="cancelEdit()" class="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg cursor-pointer">닫기</button>
+            </div>
+        </div>
+        <!-- 동료평가 기여도 분석 -->
+        <div id="peer-analysis" class="hidden mb-5"></div>
+        <div id="res-summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"></div>
+        <div id="res-questions" class="space-y-4"></div>
+    </section>
+</main>
+
+<script>
+let token       = null;
+let subjects    = [];
+let currentSubject = null;
+let surveys     = [];
+let editing     = null;      // 편집 중인 설문 데이터
+let editingKey  = null;      // null=새로 작성, surveyKey=수정
+let viewingResults = null;
+let toastTimer  = null;
+const $ = id => document.getElementById(id);
+const charts = {};
+
+function showToast(msg, type='ok') {
+    clearTimeout(toastTimer);
+    const t=$('toast'), ico=$('toast-icon'), txt=$('toast-msg');
+    ico.setAttribute('data-lucide', type==='warn'?'alert-triangle':type==='err'?'x-circle':'check-circle');
+    ico.className = `w-4 h-4 ${type==='warn'?'text-amber-400':type==='err'?'text-red-400':'text-emerald-400'}`;
+    txt.textContent = msg; lucide.createIcons({nodes:[ico]});
+    t.classList.remove('hide');
+    toastTimer = setTimeout(() => t.classList.add('hide'), 3500);
+}
+
+async function api(action, params={}, method='GET') {
+    if (APPS_URL.startsWith('PASTE_')) throw new Error('APPS_URL 설정이 필요합니다');
+    if (method === 'GET') {
+        const url = new URL(APPS_URL);
+        url.searchParams.set('action', action);
+        Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+        const r = await fetch(url.toString(), {method:'GET', redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    } else {
+        const fd = new FormData();
+        fd.append('action', action);
+        Object.entries(params).forEach(([k,v]) => fd.append(k, v));
+        const r = await fetch(APPS_URL, {method:'POST', body:fd, redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    }
+}
+
+/* ── 로그인 ── */
+const TOKEN_TTL_MS = 4 * 60 * 60 * 1000; // 4시간
+
+async function adminLogin() {
+    const pw = $('pw-input').value.trim();
+    if (!pw) return showToast('비밀번호를 입력하세요', 'warn');
+    try {
+        const r = await api('adminLogin', {password: pw});
+        token = r.token;
+        sessionStorage.setItem('admin_token', token);
+        sessionStorage.setItem('admin_token_at', String(Date.now()));
+        await onLoginSuccess();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function logout() {
+    token = null; currentSubject = null;
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token_at');
+    sessionStorage.removeItem('admin_subject');
+    sessionStorage.removeItem('admin_filter');
+    location.reload();
+}
+
+function isTokenExpired() {
+    const at = parseInt(sessionStorage.getItem('admin_token_at') || '0');
+    if (!at) return true;
+    return (Date.now() - at) > TOKEN_TTL_MS;
+}
+
+async function onLoginSuccess() {
+    $('login-screen').classList.add('hidden');
+    $('main-area').classList.remove('hidden');
+    $('header-actions').classList.remove('hidden');
+    $('header-actions').classList.add('flex');
+    try {
+        subjects = await api('getSubjects');
+        if (!subjects.length) {
+            $('year-sel').innerHTML = '<option value="">등록된 과목 없음</option>';
+            return;
+        }
+        const years = [...new Set(subjects.map(s => s.year))].sort((a,b) => b-a);
+        $('year-sel').innerHTML = years.map(y => `<option value="${y}">${y}년</option>`).join('');
+        const saved = JSON.parse(sessionStorage.getItem('admin_filter') || '{}');
+        const initYear = (saved.year && years.includes(saved.year)) ? saved.year : years[0];
+        $('year-sel').value = String(initYear);
+        await onYearChange(saved);
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+async function onYearChange(saved) {
+    const y = parseInt($('year-sel').value);
+    const sems = [...new Set(subjects.filter(s => s.year === y).map(s => s.semester))].sort();
+    $('semester-sel').innerHTML = sems.map(s => `<option value="${s}">${s}학기</option>`).join('');
+    $('semester-sel').disabled = !sems.length;
+    if (sems.length) {
+        const initSem = (saved && saved.semester && sems.includes(saved.semester)) ? saved.semester : sems[0];
+        $('semester-sel').value = String(initSem);
+        await onSemesterChange(saved);
+    }
+}
+
+async function onSemesterChange(saved) {
+    const y = parseInt($('year-sel').value);
+    const s = parseInt($('semester-sel').value);
+    const cands = subjects.filter(x => x.year === y && x.semester === s);
+    $('subject-sel').innerHTML = cands.map(c => `<option value="${c.subjectKey}">${escapeHtml(c.subjectName)}</option>`).join('');
+    $('subject-sel').disabled = !cands.length;
+    if (cands.length) {
+        const initKey = (saved && saved.subjectKey && cands.find(c => c.subjectKey === saved.subjectKey))
+            ? saved.subjectKey : cands[0].subjectKey;
+        $('subject-sel').value = initKey;
+        await onSubjectChange();
+    }
+}
+
+async function onSubjectChange() {
+    currentSubject = $('subject-sel').value;
+    sessionStorage.setItem('admin_filter', JSON.stringify({
+        year: parseInt($('year-sel').value),
+        semester: parseInt($('semester-sel').value),
+        subjectKey: currentSubject
+    }));
+    await loadList();
+}
+
+/* ── 설문 목록 ── */
+async function loadList() {
+    if (!currentSubject) return;
+    const area = $('list-area');
+    area.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">불러오는 중…</p>';
+    try {
+        surveys = await api('adminListSurveys', {token, subjectKey: currentSubject});
+        $('survey-count-badge').textContent = surveys.length;
+        if (!surveys.length) {
+            area.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">등록된 설문이 없습니다. 우상단 [+ 새 설문] 으로 만드세요</p>';
+            return;
+        }
+        area.innerHTML = surveys.map(renderListItem).join('');
+        lucide.createIcons();
+    } catch(e) {
+        area.innerHTML = `<p class="text-xs text-red-500 text-center py-4">${escapeHtml(e.message)}</p>`;
+        if (String(e.message).includes('인증')) setTimeout(logout, 1500);
+    }
+}
+
+const TYPE_LABEL = {evaluation:'수업평가', peer:'동료평가', general:'일반설문', selfreview:'자기성찰'};
+const TYPE_COLOR = {evaluation:'violet', peer:'orange', general:'sky', selfreview:'emerald'};
+
+function renderListItem(s) {
+    const c = TYPE_COLOR[s.type] || 'sky';
+    const period = (s.startAt || s.endAt) ?
+        `${s.startAt ? new Date(s.startAt).toLocaleDateString('ko-KR') : ''} ~ ${s.endAt ? new Date(s.endAt).toLocaleDateString('ko-KR') : ''}` : '기간 제한 없음';
+    return `
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3 hover:border-sky-300 transition">
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+                <span class="text-[10px] font-bold bg-${c}-100 text-${c}-700 px-1.5 py-0.5 rounded">${TYPE_LABEL[s.type] || s.type}</span>
+                ${s.anonymous ? '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">익명</span>' : ''}
+                ${s.allowMultiple ? '<span class="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">재응답</span>' : ''}
+                ${s.active ? '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">활성</span>' : '<span class="text-[10px] font-bold bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">비활성</span>'}
+            </div>
+            <p class="text-sm font-bold text-slate-800 truncate">${escapeHtml(s.title)}</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">${period} · 질문 ${s.questionCount}개 · 응답 <b class="text-sky-600">${s.responseCount}건</b></p>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+            <button onclick="viewResults('${s.surveyKey}')" class="px-2 py-1 bg-sky-100 hover:bg-sky-200 text-sky-700 text-[10px] font-bold rounded transition cursor-pointer">결과</button>
+            <button onclick="editSurvey('${s.surveyKey}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold rounded transition cursor-pointer">수정</button>
+            <button onclick="deleteSurvey('${s.surveyKey}')" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-[10px] font-bold rounded transition cursor-pointer">삭제</button>
+        </div>
+    </div>`;
+}
+
+/* ── 설문 작성/수정 ── */
+function showView(name) {
+    ['list','templates','edit','results'].forEach(v => $(`view-${v}`).classList.toggle('hidden', v !== name));
+}
+
+function newSurvey() {
+    if (!currentSubject) return showToast('과목을 먼저 선택하세요', 'warn');
+    renderTemplateGallery();
+    showView('templates');
+    lucide.createIcons();
+}
+
+/* ── 템플릿 갤러리 ── */
+const CATEGORIES = [
+    { key:'evaluation', label:'수업 평가',  color:'violet', icon:'graduation-cap' },
+    { key:'peer',       label:'동료 평가',  color:'orange', icon:'users' },
+    { key:'selfreview', label:'자기 성찰',  color:'emerald',icon:'sparkles' },
+    { key:'general',    label:'일반·기타',  color:'sky',    icon:'layers' }
+];
+
+const TEMPLATES = [
+    /* ─ 수업 평가 ─ */
+    { key:'eval_weekly_simple', category:'evaluation', name:'주간 만족도 (간단)', description:'매주 짧게 받는 수업 만족도',
+      icon:'thumbs-up', meta:{type:'evaluation',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'likert5', text:'오늘 수업의 이해도는?', required:true},
+        {type:'likert5', text:'오늘 수업의 만족도는?', required:true},
+        {type:'long',    text:'오늘 수업에서 좋았던 점은?', required:false},
+        {type:'long',    text:'개선할 점이 있다면?', required:false}
+      ]
+    },
+    { key:'eval_midterm', category:'evaluation', name:'중간 평가 (상세)', description:'학기 중간에 받는 종합 평가',
+      icon:'clipboard-check', meta:{type:'evaluation',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'likert5', text:'강의 내용의 이해도', required:true},
+        {type:'likert5', text:'강의 진행 속도', required:true},
+        {type:'likert5', text:'강의 자료의 품질', required:true},
+        {type:'likert5', text:'실습·과제의 적절성', required:true},
+        {type:'likert5', text:'교수님과의 소통', required:true},
+        {type:'likert5', text:'전반적인 만족도', required:true},
+        {type:'short',   text:'가장 인상 깊었던 내용은?', required:false},
+        {type:'long',    text:'강의에서 좋았던 점', required:false},
+        {type:'long',    text:'개선이 필요한 점', required:false}
+      ]
+    },
+    { key:'eval_final', category:'evaluation', name:'기말 종합 평가', description:'학기 마무리 종합 평가',
+      icon:'graduation-cap', meta:{type:'evaluation',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'likert5', text:'학기 전체 학습 목표 달성도', required:true},
+        {type:'likert5', text:'강의 내용의 유익성', required:true},
+        {type:'likert5', text:'강의 자료의 품질', required:true},
+        {type:'likert5', text:'평가 방식의 공정성', required:true},
+        {type:'likert5', text:'과제·시험의 난이도 적절성', required:true},
+        {type:'likert5', text:'교수님의 교수법', required:true},
+        {type:'likert5', text:'실습·프로젝트의 유익성', required:true},
+        {type:'likert5', text:'전반적인 만족도', required:true},
+        {type:'long',    text:'이 강의에서 배운 가장 중요한 것은?', required:false},
+        {type:'long',    text:'다음 학기에 개선했으면 하는 점', required:false},
+        {type:'long',    text:'후배에게 이 강의를 추천하시겠습니까? 이유는?', required:false}
+      ]
+    },
+    { key:'eval_quick', category:'evaluation', name:'한 마디 피드백 (1분)', description:'수업 직후 빠른 피드백',
+      icon:'message-circle', meta:{type:'evaluation',anonymous:'yes',allowMultiple:'yes'},
+      questions:[
+        {type:'likert5', text:'오늘 수업은 어땠나요?', required:true},
+        {type:'short',   text:'한 단어로 표현한다면?', required:false}
+      ]
+    },
+    { key:'eval_materials', category:'evaluation', name:'강의 자료 평가', description:'PPT·교재 등 자료의 품질 평가',
+      icon:'file-text', meta:{type:'evaluation',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'likert5', text:'강의 자료의 명확성', required:true},
+        {type:'likert5', text:'예시·그림의 적절성', required:true},
+        {type:'likert5', text:'분량의 적절성', required:true},
+        {type:'single',  text:'가장 도움이 되는 자료 형태는?', options:['PPT 슬라이드','교재','동영상','코드 예제','연습문제'], required:true},
+        {type:'long',    text:'자료 개선 의견', required:false}
+      ]
+    },
+    { key:'eval_teaching', category:'evaluation', name:'강의 방식 평가', description:'강의 진행 방식·소통 평가',
+      icon:'mic', meta:{type:'evaluation',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'likert5', text:'강의 전달력', required:true},
+        {type:'likert5', text:'질문 대응', required:true},
+        {type:'likert5', text:'학생 참여 유도', required:true},
+        {type:'multiple',text:'선호하는 수업 방식 (복수)', options:['이론 강의','실습','토론','프로젝트','발표','퀴즈'], required:true},
+        {type:'long',    text:'강의 방식 개선 의견', required:false}
+      ]
+    },
+
+    /* ─ 동료 평가 (peer_*) ─ */
+    { key:'peer_analysis', category:'peer', name:'팀 프로젝트 동료평가 (기여도 분석용) ⭐', description:'자기평가 + 항목별 팀원평가 + 서술 → 교수 포털에서 본인:타인 기여도 분석 가능',
+      icon:'bar-chart-2', meta:{type:'peer',anonymous:'no',allowMultiple:'no'},
+      questions:[
+        {type:'likert5',      text:'[자기평가] 나의 팀 프로젝트 종합 기여도', required:true, description:'본인 기여도를 솔직하게 5점 척도로 (분석에서 타인평가와 비교됨)'},
+        {type:'peer_likert5', text:'책임감 — 맡은 역할을 성실히 수행', required:true},
+        {type:'peer_likert5', text:'참여도 — 회의·활동에 적극 참여', required:true},
+        {type:'peer_likert5', text:'협력 — 소통하고 협조적', required:true},
+        {type:'peer_likert5', text:'기여도 — 산출물에 실질적 기여', required:true},
+        {type:'peer_long',    text:'팀원에게 — 잘한 점 / 개선했으면 하는 점', required:false}
+      ]
+    },
+    { key:'peer_contribution', category:'peer', name:'팀원 기여도 (척도)', description:'팀원 각각의 기여도를 한 척도로 평가',
+      icon:'users', meta:{type:'peer',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'peer_likert5', text:'각 팀원의 전반적 기여도', required:true, description:'5점: 매우 우수 / 1점: 매우 부족'}
+      ]
+    },
+    { key:'peer_multi', category:'peer', name:'팀원 다면 평가 (4개 항목)', description:'팀원별로 회의·기여·협업·역량 평가',
+      icon:'star', meta:{type:'peer',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'peer_likert5', text:'회의·일정 참여도', required:true},
+        {type:'peer_likert5', text:'과제 수행 기여도', required:true},
+        {type:'peer_likert5', text:'의사소통·협업', required:true},
+        {type:'peer_likert5', text:'전문성·역량', required:true}
+      ]
+    },
+    { key:'peer_360', category:'peer', name:'팀 협업 360°', description:'팀 전체 + 개별 팀원 종합 평가',
+      icon:'compass', meta:{type:'peer',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'likert5',      text:'우리 팀의 전반적인 협업 수준', required:true},
+        {type:'likert5',      text:'팀 의사결정 과정의 만족도', required:true},
+        {type:'peer_likert5', text:'각 팀원의 협업 기여도', required:true},
+        {type:'long',         text:'우리 팀의 강점', required:false},
+        {type:'long',         text:'우리 팀의 개선점', required:false}
+      ]
+    },
+    { key:'peer_kpt', category:'peer', name:'팀 프로젝트 회고 (KPT)', description:'프로젝트 회고: Keep · Problem · Try',
+      icon:'rotate-ccw', meta:{type:'peer',anonymous:'no',allowMultiple:'no'},
+      questions:[
+        {type:'long', text:'Keep — 잘된 점, 계속하고 싶은 것', required:true, description:'프로젝트에서 좋았던 점'},
+        {type:'long', text:'Problem — 어려웠던 점, 문제점', required:true, description:'어떤 부분이 어려웠나요?'},
+        {type:'long', text:'Try — 다음에 시도하고 싶은 개선책', required:true, description:'구체적인 행동 계획'}
+      ]
+    },
+    { key:'peer_message', category:'peer', name:'팀원에게 한 마디', description:'팀원 각자에게 익명 메시지',
+      icon:'heart', meta:{type:'peer',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'peer_long', text:'각 팀원에게 전하고 싶은 메시지', required:false, description:'응원·감사·아쉬움 등 자유롭게'}
+      ]
+    },
+
+    /* ─ 자기 성찰 ─ */
+    { key:'self_weekly', category:'selfreview', name:'주간 학습 일지', description:'한 주의 학습을 돌아보기',
+      icon:'book-open', meta:{type:'selfreview',anonymous:'no',allowMultiple:'yes'},
+      questions:[
+        {type:'likert5', text:'이번 주 학습 집중도', required:true},
+        {type:'likert5', text:'이번 주 학습 목표 달성도', required:true},
+        {type:'long',    text:'이번 주 가장 중요하게 배운 것', required:true},
+        {type:'long',    text:'아직 이해가 부족한 부분', required:false},
+        {type:'long',    text:'다음 주 학습 계획', required:false}
+      ]
+    },
+    { key:'self_assignment', category:'selfreview', name:'과제 자평', description:'제출한 과제에 대한 자기 평가',
+      icon:'edit', meta:{type:'selfreview',anonymous:'no',allowMultiple:'yes'},
+      questions:[
+        {type:'likert5', text:'과제에 투자한 노력 정도', required:true},
+        {type:'likert5', text:'과제 결과물의 만족도', required:true},
+        {type:'likert5', text:'학습 목표 달성도', required:true},
+        {type:'long',    text:'과제에서 가장 잘했다고 생각하는 부분', required:false},
+        {type:'long',    text:'아쉬웠던 부분이나 개선점', required:false}
+      ]
+    },
+    { key:'self_semester', category:'selfreview', name:'학기 회고', description:'학기 전체 학습 돌아보기',
+      icon:'calendar-check', meta:{type:'selfreview',anonymous:'no',allowMultiple:'no'},
+      questions:[
+        {type:'likert5', text:'학기 초 세운 목표 달성도', required:true},
+        {type:'likert5', text:'내 학습 태도에 대한 만족도', required:true},
+        {type:'likert5', text:'팀 활동 기여도 자평', required:true},
+        {type:'likert5', text:'전반적 성장 정도', required:true},
+        {type:'long',    text:'이번 학기 가장 큰 성취는?', required:true},
+        {type:'long',    text:'가장 어려웠던 순간과 극복 방법', required:false},
+        {type:'long',    text:'다음 학기에 적용하고 싶은 것', required:false},
+        {type:'long',    text:'나에게 한 마디', required:false}
+      ]
+    },
+    { key:'self_goal', category:'selfreview', name:'학습 목표 점검', description:'목표 설정 · 중간 점검 · 달성도',
+      icon:'target', meta:{type:'selfreview',anonymous:'no',allowMultiple:'yes'},
+      questions:[
+        {type:'long',    text:'이번 학기 학습 목표는 무엇인가요?', required:true},
+        {type:'likert5', text:'현재 목표 달성률', required:true, description:'5점: 모두 달성 / 1점: 거의 못 함'},
+        {type:'long',    text:'목표 달성을 위한 다음 단계', required:false},
+        {type:'long',    text:'도움이 필요한 부분', required:false}
+      ]
+    },
+    { key:'self_swot', category:'selfreview', name:'강점/약점 분석', description:'이 과목에서의 강점·약점 SWOT',
+      icon:'pie-chart', meta:{type:'selfreview',anonymous:'no',allowMultiple:'no'},
+      questions:[
+        {type:'long', text:'강점 (Strength) — 잘하는 부분', required:true},
+        {type:'long', text:'약점 (Weakness) — 부족한 부분', required:true},
+        {type:'long', text:'기회 (Opportunity) — 활용할 수 있는 것', required:false},
+        {type:'long', text:'위협 (Threat) — 주의해야 할 것', required:false}
+      ]
+    },
+
+    /* ─ 일반·기타 ─ */
+    { key:'blank', category:'general', name:'빈 설문 (직접 작성)', description:'템플릿 없이 처음부터 만들기',
+      icon:'plus-square', meta:{type:'general',anonymous:'no',allowMultiple:'no'},
+      questions:[]
+    },
+    { key:'poll_simple', category:'general', name:'간단 투표 (단일선택)', description:'하나의 옵션만 선택하는 빠른 투표',
+      icon:'check-square', meta:{type:'general',anonymous:'yes',allowMultiple:'no'},
+      questions:[
+        {type:'single', text:'의견을 선택하세요', options:['옵션 A','옵션 B','옵션 C'], required:true}
+      ]
+    },
+    { key:'poll_multi', category:'general', name:'일정 조정 (복수선택)', description:'가능한 모든 시간대 선택',
+      icon:'calendar', meta:{type:'general',anonymous:'no',allowMultiple:'yes'},
+      questions:[
+        {type:'multiple',text:'참석 가능한 시간을 모두 선택하세요', options:['월요일 오후','화요일 오전','화요일 오후','수요일 오전','수요일 오후','목요일 오전','목요일 오후','금요일 오전'], required:true},
+        {type:'short',   text:'추가 의견 (선택)', required:false}
+      ]
+    },
+    { key:'pre_diagnostic', category:'general', name:'사전 진단 설문', description:'학기 시작 전 학생 수준·기대 파악',
+      icon:'search', meta:{type:'general',anonymous:'no',allowMultiple:'no'},
+      questions:[
+        {type:'single',  text:'이 분야에 대한 경험은?', options:['처음','약간','중급','경험 많음'], required:true},
+        {type:'multiple',text:'이미 사용해본 도구·언어 (복수)', options:['Python','JavaScript','Java','C/C++','R','SQL','Docker','AWS/Azure/GCP','없음'], required:false},
+        {type:'likert5', text:'이 과목에 대한 흥미도', required:true},
+        {type:'short',   text:'이 강의에서 가장 배우고 싶은 것', required:false},
+        {type:'long',    text:'학기 학습 목표', required:false}
+      ]
+    },
+    { key:'attendance', category:'general', name:'출석·참여 확인', description:'간단한 출석 확인용 설문',
+      icon:'user-check', meta:{type:'general',anonymous:'no',allowMultiple:'no'},
+      questions:[
+        {type:'single', text:'오늘 수업에 참여하셨나요?', options:['예, 처음부터 끝까지','일부 참여','결석'], required:true},
+        {type:'short',  text:'결석·지각 사유 (해당시)', required:false}
+      ]
+    },
+    { key:'open_feedback', category:'general', name:'자유 의견 수렴', description:'주제 없는 자유 의견',
+      icon:'message-square', meta:{type:'general',anonymous:'yes',allowMultiple:'yes'},
+      questions:[
+        {type:'long', text:'교수님께 전하고 싶은 의견·건의·질문', required:true}
+      ]
+    },
+    { key:'post_test', category:'general', name:'사후 평가', description:'사전 진단과 비교를 위한 사후 평가',
+      icon:'trending-up', meta:{type:'general',anonymous:'no',allowMultiple:'no'},
+      questions:[
+        {type:'single', text:'학기 후 이 분야에 대한 자신감은?', options:['많이 떨어짐','약간 떨어짐','비슷','약간 향상','많이 향상'], required:true},
+        {type:'likert5',text:'학습 목표 달성도', required:true},
+        {type:'likert5',text:'이 과목의 유용성', required:true},
+        {type:'long',   text:'학기 중 가장 큰 배움', required:false},
+        {type:'long',   text:'이 강의를 추천한다면 후배에게 어떤 말을 하시겠어요?', required:false}
+      ]
+    }
+];
+
+function renderTemplateGallery() {
+    const area = $('templates-area');
+    area.innerHTML = CATEGORIES.map(cat => {
+        const items = TEMPLATES.filter(t => t.category === cat.key);
+        const cards = items.map(t => {
+            const qsum = `질문 ${t.questions.length}개`;
+            const tagsRaw = [
+                t.meta.anonymous === 'yes' ? '익명' : null,
+                t.meta.allowMultiple === 'yes' ? '재응답' : null,
+                t.questions.some(q => q.type && q.type.startsWith('peer_')) ? '팀원평가' : null
+            ].filter(x => x);
+            const tags = tagsRaw.map(t => `<span class="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">${t}</span>`).join('');
+            return `
+            <button onclick="applyTemplate('${t.key}')" class="text-left bg-white border border-slate-200 rounded-xl p-3 hover:border-${cat.color}-400 hover:shadow-md transition cursor-pointer group">
+                <div class="flex items-start gap-2 mb-1.5">
+                    <div class="p-1.5 bg-${cat.color}-100 text-${cat.color}-600 rounded-lg shrink-0">
+                        <i data-lucide="${t.icon}" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-slate-800 leading-tight">${escapeHtml(t.name)}</p>
+                        <p class="text-[10px] text-slate-500 mt-0.5 line-clamp-2">${escapeHtml(t.description)}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 flex-wrap mt-1.5">
+                    <span class="text-[9px] font-bold bg-${cat.color}-50 text-${cat.color}-600 px-1.5 py-0.5 rounded">${qsum}</span>
+                    ${tags}
+                </div>
+            </button>`;
+        }).join('');
+        return `
+        <div>
+            <h4 class="text-xs font-bold text-${cat.color}-600 uppercase mb-2 flex items-center gap-1.5">
+                <i data-lucide="${cat.icon}" class="w-3.5 h-3.5"></i>
+                ${cat.label}
+                <span class="text-[10px] text-slate-400 font-medium">${items.length}개</span>
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">${cards}</div>
+        </div>`;
+    }).join('');
+}
+
+function applyTemplate(templateKey) {
+    const t = TEMPLATES.find(x => x.key === templateKey);
+    if (!t) return;
+    editingKey = null;
+    editing = {
+        title:         t.name,
+        description:   t.description,
+        type:          t.meta.type,
+        anonymous:     t.meta.anonymous,
+        allowMultiple: t.meta.allowMultiple,
+        startAt:       '',
+        endAt:         '',
+        active:        true,
+        questions:     t.questions.map(q => ({
+            type:        q.type,
+            text:        q.text,
+            options:     q.options || [],
+            required:    q.required !== false,
+            description: q.description || ''
+        }))
+    };
+    $('edit-title-label').innerHTML = `<i data-lucide="edit" class="w-4 h-4"></i> 새 설문 — <span class="text-sky-600">${escapeHtml(t.name)}</span> 템플릿 기반`;
+    populateEditForm();
+    showView('edit');
+    lucide.createIcons();
+    showToast(`'${t.name}' 템플릿 불러옴`);
+}
+
+async function editSurvey(surveyKey) {
+    try {
+        // surveys 목록의 메타 + getSurveyDetail의 질문
+        const meta = surveys.find(s => s.surveyKey === surveyKey);
+        const detail = await api('getSurveyDetail', {surveyKey});
+        editingKey = surveyKey;
+        editing = {
+            title: detail.title, description: detail.description,
+            type: detail.type, anonymous: detail.anonymous?'yes':'no',
+            allowMultiple: detail.allowMultiple?'yes':'no',
+            startAt: meta.startAt ? new Date(meta.startAt).toISOString().slice(0,10) : '',
+            endAt:   meta.endAt   ? new Date(meta.endAt).toISOString().slice(0,10)   : '',
+            active: meta.active,
+            questions: detail.questions.map(q => ({
+                questionKey: q.questionKey, type: q.type, text: q.text,
+                options: q.options || [], required: q.required, description: q.description || ''
+            }))
+        };
+        $('edit-title-label').innerHTML = '<i data-lucide="edit" class="w-4 h-4"></i> 설문 수정';
+        populateEditForm();
+        showView('edit');
+        lucide.createIcons();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function populateEditForm() {
+    $('ed-title').value = editing.title;
+    $('ed-desc').value  = editing.description;
+    $('ed-type').value  = editing.type;
+    $('ed-anon').value  = editing.anonymous;
+    $('ed-multi').value = editing.allowMultiple;
+    $('ed-start').value = editing.startAt;
+    $('ed-end').value   = editing.endAt;
+    $('ed-active').checked = !!editing.active;
+    $('ed-type-hint').classList.toggle('hidden', editing.type !== 'peer');
+    renderQuestions();
+    lucide.createIcons();
+}
+
+function onSurveyTypeChange() {
+    editing.type = $('ed-type').value;
+    const isPeer = editing.type === 'peer';
+    $('ed-type-hint').classList.toggle('hidden', !isPeer);
+    lucide.createIcons();
+    if (isPeer) {
+        showToast('💡 동료평가 모드 — 이후 추가하는 질문이 [팀원별]로 자동 설정됩니다');
+    }
+}
+
+function renderQuestions() {
+    const area = $('questions-area');
+    $('q-count-badge').textContent = editing.questions.length;
+    if (!editing.questions.length) {
+        area.innerHTML = '<p class="text-xs text-slate-400 text-center py-6 border border-dashed border-slate-200 rounded-lg">질문이 없습니다. 우상단 [+ 질문 추가] 클릭</p>';
+        return;
+    }
+    area.innerHTML = editing.questions.map((q,i) => renderQuestionEditor(q, i)).join('');
+    lucide.createIcons();
+    bindQuestionEditorEvents();
+}
+
+const QTYPES = [
+    {key:'likert5',      label:'척도 1-5',         group:'일반',     color:'slate'},
+    {key:'likert7',      label:'척도 1-7',         group:'일반',     color:'slate'},
+    {key:'single',       label:'단일선택',         group:'일반',     color:'slate'},
+    {key:'multiple',     label:'복수선택',         group:'일반',     color:'slate'},
+    {key:'short',        label:'단답',            group:'일반',     color:'slate'},
+    {key:'long',         label:'장문',            group:'일반',     color:'slate'},
+    {key:'peer_likert5', label:'팀원별 척도 1-5',  group:'팀원평가', color:'orange'},
+    {key:'peer_likert7', label:'팀원별 척도 1-7',  group:'팀원평가', color:'orange'},
+    {key:'peer_short',   label:'팀원별 단답',      group:'팀원평가', color:'orange'},
+    {key:'peer_long',    label:'팀원별 장문',      group:'팀원평가', color:'orange'}
+];
+
+function renderQuestionEditor(q, idx) {
+    const needsOptions = q.type === 'single' || q.type === 'multiple';
+    const opts = Array.isArray(q.options) ? q.options.join('\n') : (q.options || '');
+    return `
+    <div class="q-card bg-slate-50 border border-slate-200 rounded-xl p-3" data-qidx="${idx}">
+        <div class="flex items-start gap-2 mb-2">
+            <span class="w-6 h-6 rounded-full bg-sky-100 text-sky-700 text-xs font-bold flex items-center justify-center shrink-0">${idx+1}</span>
+            <input type="text" placeholder="질문 내용" value="${escapeHtml(q.text)}" data-field="text" class="q-field flex-1 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-sky-400">
+            <button onclick="moveQuestion(${idx},-1)" class="p-1 text-slate-400 hover:text-sky-600" title="위로"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+            <button onclick="moveQuestion(${idx},1)" class="p-1 text-slate-400 hover:text-sky-600" title="아래로"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+            <button onclick="removeQuestion(${idx})" class="p-1 text-slate-400 hover:text-red-500" title="삭제"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>
+        <div class="ml-8 mb-2 space-y-1">
+            ${(function(){
+                const groups = {};
+                QTYPES.forEach(t => { if(!groups[t.group]) groups[t.group] = []; groups[t.group].push(t); });
+                return Object.entries(groups).map(([gname, items]) => {
+                    const c = items[0].color;
+                    return '<div class="flex flex-wrap items-center gap-1">' +
+                        '<span class="text-[9px] font-bold uppercase mr-1 w-14 shrink-0 ' + (c==='orange'?'text-orange-600':'text-slate-500') + '">' + gname + '</span>' +
+                        items.map(t => '<button type="button" onclick="setQType(' + idx + ',\'' + t.key + '\')" class="type-pill ' + (t.key===q.type?'selected':'') + ' px-2 py-0.5 text-[10px] font-bold rounded-full ' + (c==='orange'?'bg-orange-100 text-orange-700 hover:bg-orange-200':'bg-slate-200 text-slate-600 hover:bg-slate-300') + '">' + t.label + '</button>').join('') +
+                    '</div>';
+                }).join('');
+            })()}
+        </div>
+        <div class="ml-8 grid grid-cols-1 md:grid-cols-2 gap-2">
+            <input type="text" placeholder="질문 설명/예시 (선택)" value="${escapeHtml(q.description)}" data-field="description" class="q-field px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-sky-400">
+            <label class="inline-flex items-center gap-2 text-[11px] font-semibold text-slate-600">
+                <input type="checkbox" data-field="required" class="q-field" ${q.required?'checked':''}> 필수 응답
+            </label>
+        </div>
+        ${needsOptions ? `
+        <div class="ml-8 mt-2">
+            <label class="block text-[10px] font-bold text-slate-500 mb-1">선택지 (한 줄에 하나)</label>
+            <textarea rows="3" placeholder="옵션 1&#10;옵션 2&#10;옵션 3" data-field="options" class="q-field w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-sky-400 resize-none">${escapeHtml(opts)}</textarea>
+        </div>` : ''}
+    </div>`;
+}
+
+function bindQuestionEditorEvents() {
+    document.querySelectorAll('.q-card').forEach(card => {
+        const idx = parseInt(card.dataset.qidx);
+        card.querySelectorAll('.q-field').forEach(f => {
+            const ev = f.type === 'checkbox' ? 'change' : 'input';
+            f.addEventListener(ev, () => {
+                const fld = f.dataset.field;
+                if (fld === 'required') editing.questions[idx].required = f.checked;
+                else if (fld === 'options') editing.questions[idx].options = f.value.split('\n').map(x=>x.trim()).filter(x=>x);
+                else editing.questions[idx][fld] = f.value;
+            });
+        });
+    });
+}
+
+function setQType(idx, type) {
+    editing.questions[idx].type = type;
+    renderQuestions();
+}
+
+function addQuestion() {
+    // 설문 유형이 동료평가면 기본 질문 유형도 팀원별
+    const isPeer = editing.type === 'peer';
+    const defaultType = isPeer ? 'peer_likert5' : 'likert5';
+    editing.questions.push({type:defaultType, text:'', options:[], required:true, description:''});
+    renderQuestions();
+    if (isPeer && editing.questions.length === 1) {
+        showToast('💡 동료평가 설문 — 질문이 [팀원별 척도]로 자동 추가됩니다');
+    }
+}
+
+function removeQuestion(idx) {
+    if (!confirm(`${idx+1}번 질문을 삭제하시겠습니까?`)) return;
+    editing.questions.splice(idx, 1);
+    renderQuestions();
+}
+
+function moveQuestion(idx, dir) {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= editing.questions.length) return;
+    [editing.questions[idx], editing.questions[newIdx]] = [editing.questions[newIdx], editing.questions[idx]];
+    renderQuestions();
+}
+
+function cancelEdit() {
+    editing = null; editingKey = null; viewingResults = null;
+    Object.values(charts).forEach(c => c && c.destroy());
+    Object.keys(charts).forEach(k => delete charts[k]);
+    showView('list');
+}
+
+async function saveSurvey() {
+    // 메타 수집
+    const title = $('ed-title').value.trim();
+    if (!title) return showToast('제목을 입력하세요', 'warn');
+    if (!editing.questions.length) return showToast('질문을 1개 이상 추가하세요', 'warn');
+    for (const q of editing.questions) {
+        if (!q.text.trim()) return showToast('비어있는 질문이 있습니다', 'warn');
+        if ((q.type==='single'||q.type==='multiple') && (!q.options || !q.options.length))
+            return showToast(`'${q.text}' 의 선택지를 입력하세요`, 'warn');
+    }
+
+    const payload = { questions: editing.questions };
+    const params = {
+        token,
+        subjectKey:    currentSubject,
+        title,
+        description:   $('ed-desc').value,
+        type:          $('ed-type').value,
+        anonymous:     $('ed-anon').value,
+        allowMultiple: $('ed-multi').value,
+        startAt:       $('ed-start').value,
+        endAt:         $('ed-end').value,
+        active:        $('ed-active').checked ? 'yes' : 'no',
+        payload:       JSON.stringify(payload)
+    };
+
+    $('save-btn').disabled = true;
+    try {
+        if (editingKey) {
+            params.surveyKey = editingKey;
+            await api('adminUpdateSurvey', params, 'POST');
+            showToast('설문 수정 완료');
+        } else {
+            await api('adminCreateSurvey', params, 'POST');
+            showToast('새 설문 생성 완료');
+        }
+        cancelEdit();
+        await loadList();
+    } catch(e) {
+        showToast(e.message, 'err');
+    } finally {
+        $('save-btn').disabled = false;
+    }
+}
+
+async function deleteSurvey(surveyKey) {
+    const s = surveys.find(x => x.surveyKey === surveyKey);
+    const title = s ? s.title : '';
+    if (!confirm(`'${title}' 설문과 모든 응답을 삭제하시겠습니까?\n(되돌릴 수 없습니다)`)) return;
+    try {
+        await api('adminDeleteSurvey', {token, surveyKey});
+        showToast('삭제 완료');
+        await loadList();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+/* ── 결과 분석 ── */
+async function viewResults(surveyKey) {
+    try {
+        viewingResults = await api('adminGetSurveyResults', {token, surveyKey});
+        renderResults();
+        showView('results');
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function renderResults() {
+    const v = viewingResults;
+    $('res-title').textContent = v.survey.title;
+    const meta = `${TYPE_LABEL[v.survey.type] || v.survey.type}${v.survey.anonymous?' · 익명':''} · 응답 ${v.totalResponses}건 · 질문 ${v.questions.length}개`;
+    $('res-meta').textContent = meta;
+
+    // 동료평가(peer 척도 문항 보유) → 기여도 분석 버튼 노출
+    const hasPeerScale = v.questions.some(q => q.type === 'peer_likert5' || q.type === 'peer_likert7');
+    $('peer-analysis-btn').classList.toggle('hidden', !hasPeerScale);
+    $('peer-analysis').classList.add('hidden');
+    $('peer-analysis').innerHTML = '';
+
+    // 요약 카드
+    const responded = v.responses.length;
+    $('res-summary').innerHTML = `
+        <div class="bg-sky-50 p-3 rounded-xl border border-sky-100">
+            <div class="text-[10px] font-bold text-sky-500 uppercase">총 응답</div>
+            <div class="text-xl font-bold text-sky-700">${responded}</div>
+        </div>
+        <div class="bg-violet-50 p-3 rounded-xl border border-violet-100">
+            <div class="text-[10px] font-bold text-violet-500 uppercase">질문 수</div>
+            <div class="text-xl font-bold text-violet-700">${v.questions.length}</div>
+        </div>
+        <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+            <div class="text-[10px] font-bold text-emerald-500 uppercase">최근 응답</div>
+            <div class="text-xs font-bold text-emerald-700 mt-1">${v.responses.length ? new Date(v.responses[v.responses.length-1].submittedAt).toLocaleString('ko-KR') : '-'}</div>
+        </div>
+        <div class="bg-amber-50 p-3 rounded-xl border border-amber-100">
+            <div class="text-[10px] font-bold text-amber-500 uppercase">익명 여부</div>
+            <div class="text-xs font-bold text-amber-700 mt-1">${v.survey.anonymous ? '익명' : '실명'}</div>
+        </div>`;
+
+    // 질문별
+    Object.values(charts).forEach(c => c && c.destroy());
+    Object.keys(charts).forEach(k => delete charts[k]);
+    $('res-questions').innerHTML = v.questions.map((q,i) => renderResultQuestion(q, i+1)).join('');
+    lucide.createIcons();
+    v.questions.forEach(q => makeChart(q));
+}
+
+function renderResultQuestion(q, num) {
+    const agg = viewingResults.aggregates[q.questionKey] || {count:0};
+    const type = (QTYPES.find(t => t.key === q.type) || {label: q.type}).label;
+    let body = '';
+
+    if (q.type === 'likert5' || q.type === 'likert7') {
+        body = `
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="md:col-span-1 flex flex-col items-center justify-center bg-slate-50 rounded-xl p-3">
+                <p class="text-[10px] text-slate-500">평균</p>
+                <p class="text-3xl font-bold text-sky-600">${(agg.mean||0).toFixed(2)}</p>
+                <p class="text-[10px] text-slate-400">/ ${q.type==='likert5'?5:7}</p>
+                <p class="text-[10px] text-slate-500 mt-2">N=${agg.count}</p>
+            </div>
+            <div class="md:col-span-2" style="height:200px"><canvas id="chart-${q.questionKey}"></canvas></div>
+        </div>`;
+    } else if (q.type === 'single') {
+        body = `<div style="height:200px"><canvas id="chart-${q.questionKey}"></canvas></div>`;
+    } else if (q.type === 'multiple') {
+        body = `<div style="height:200px"><canvas id="chart-${q.questionKey}"></canvas></div>`;
+    } else if (q.type === 'short' || q.type === 'long') {
+        const texts = agg.texts || [];
+        body = texts.length
+            ? `<div class="space-y-1 max-h-64 overflow-y-auto">${texts.map(t => `<div class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700">"${escapeHtml(t)}"</div>`).join('')}</div>`
+            : '<p class="text-xs text-slate-400 italic">응답 없음</p>';
+    } else if (q.type === 'peer_likert5' || q.type === 'peer_likert7') {
+        const perTarget = agg.perTarget || {};
+        const targets = Object.keys(perTarget).sort((a,b) => (perTarget[b].mean||0) - (perTarget[a].mean||0));
+        if (!targets.length) {
+            body = '<p class="text-xs text-slate-400 italic">응답 없음</p>';
+        } else {
+            const max = q.type === 'peer_likert5' ? 5 : 7;
+            const rows = targets.map(t => {
+                const d = perTarget[t];
+                const pct = (d.mean / max * 100).toFixed(0);
+                return `<tr class="border-t border-slate-100">
+                    <td class="px-3 py-2 text-xs font-bold text-slate-700">${escapeHtml(t)}</td>
+                    <td class="px-3 py-2 text-xs">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-sky-500" style="width:${pct}%"></div>
+                            </div>
+                            <span class="font-bold text-sky-700 w-12 text-right">${d.mean.toFixed(2)}</span>
+                        </div>
+                    </td>
+                    <td class="px-3 py-2 text-xs text-right text-slate-500">${d.count}회</td>
+                </tr>`;
+            }).join('');
+            body = `
+            <div class="overflow-hidden border border-slate-200 rounded-lg">
+                <table class="w-full">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500">팀원</th>
+                            <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-500">평균 (${max}점 만점)</th>
+                            <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-500">응답수</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white">${rows}</tbody>
+                </table>
+            </div>`;
+        }
+    } else if (q.type === 'peer_short' || q.type === 'peer_long') {
+        const perTarget = agg.perTarget || {};
+        const targets = Object.keys(perTarget).sort();
+        if (!targets.length) {
+            body = '<p class="text-xs text-slate-400 italic">응답 없음</p>';
+        } else {
+            body = `<div class="space-y-2 max-h-96 overflow-y-auto">${targets.map(t => `
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <p class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2">
+                    <i data-lucide="user" class="w-3 h-3"></i>
+                    ${escapeHtml(t)}
+                    <span class="text-[10px] text-slate-400 font-normal">(${perTarget[t].length}건)</span>
+                </p>
+                <div class="space-y-1">${perTarget[t].map(text => `<div class="bg-white border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-700">"${escapeHtml(text)}"</div>`).join('')}</div>
+            </div>`).join('')}</div>`;
+        }
+    }
+
+    return `
+    <div class="border border-slate-200 rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="w-6 h-6 rounded-full bg-sky-100 text-sky-700 text-xs font-bold flex items-center justify-center">${num}</span>
+            <span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">${type}</span>
+            ${q.required ? '<span class="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">필수</span>' : ''}
+            <span class="text-xs text-slate-500 ml-auto">응답 ${agg.count || 0}건</span>
+        </div>
+        <p class="text-sm font-bold text-slate-800 mb-3">${escapeHtml(q.text)}</p>
+        ${body}
+    </div>`;
+}
+
+function makeChart(q) {
+    const agg = viewingResults.aggregates[q.questionKey] || {};
+    const ctx = $(`chart-${q.questionKey}`);
+    if (!ctx) return;
+
+    if (q.type === 'likert5' || q.type === 'likert7') {
+        const n = q.type === 'likert5' ? 5 : 7;
+        const labels = Array.from({length:n}, (_,i) => String(i+1));
+        const data = labels.map(l => agg.distribution?.[l] || 0);
+        charts[q.questionKey] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{data, backgroundColor: '#0ea5e9', borderRadius:6}] },
+            options: { responsive:true, maintainAspectRatio:false,
+                plugins:{legend:{display:false}},
+                scales:{y:{beginAtZero:true, ticks:{stepSize:1}}}
+            }
+        });
+    } else if (q.type === 'single') {
+        const labels = q.options.length ? q.options : Object.keys(agg.distribution || {});
+        const data = labels.map(l => agg.distribution?.[l] || 0);
+        charts[q.questionKey] = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels, datasets: [{data, backgroundColor:
+                ['#0ea5e9','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#6366f1','#06b6d4']
+            }] },
+            options: { responsive:true, maintainAspectRatio:false,
+                plugins:{legend:{position:'right', labels:{font:{size:10}}}}
+            }
+        });
+    } else if (q.type === 'multiple') {
+        const labels = q.options.length ? q.options : Object.keys(agg.distribution || {});
+        const data = labels.map(l => agg.distribution?.[l] || 0);
+        charts[q.questionKey] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{data, backgroundColor: '#8b5cf6', borderRadius:6}] },
+            options: { responsive:true, maintainAspectRatio:false, indexAxis:'y',
+                plugins:{legend:{display:false}},
+                scales:{x:{beginAtZero:true, ticks:{stepSize:1}}}
+            }
+        });
+    }
+}
+
+/* ── 동료평가 기여도 분석 ── */
+let peerData = null;
+async function togglePeerAnalysis() {
+    const box = $('peer-analysis');
+    if (!box.classList.contains('hidden')) { box.classList.add('hidden'); return; }
+    if (!viewingResults) return;
+    box.classList.remove('hidden');
+    box.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">기여도 분석 중…</p>';
+    try {
+        peerData = await api('adminGetPeerAnalysis', {token, surveyKey: viewingResults.survey.surveyKey});
+        renderPeerAnalysis();
+    } catch(e) {
+        box.innerHTML = `<p class="text-xs text-red-500 text-center py-4">${escapeHtml(e.message)}</p>`;
+    }
+}
+
+function renderPeerAnalysis() {
+    const d = peerData;
+    const max = d.survey.maxScore;
+    const fmt = v => v==null ? '<span class="text-slate-300">-</span>' : v.toFixed(2);
+    // 격차 색상: + 과대평가(빨강), - 과소평가(파랑)
+    const gapCell = g => {
+        if (g==null) return '<span class="text-slate-300">-</span>';
+        const sign = g>0?'+':'';
+        const cls = Math.abs(g)<0.5 ? 'text-slate-500' : g>0 ? 'text-red-600' : 'text-blue-600';
+        const tag = Math.abs(g)<0.5 ? '' : g>0 ? ' 과대' : ' 과소';
+        return `<span class="${cls} font-bold">${sign}${g.toFixed(2)}${tag}</span>`;
+    };
+    // 상대 기여도 막대
+    const contribCell = c => {
+        if (c==null) return '<span class="text-slate-300">-</span>';
+        const pct = Math.min(150, c*100);
+        const col = c>=1.1?'bg-emerald-500':c>=0.9?'bg-sky-500':'bg-amber-500';
+        return `<div class="flex items-center gap-1.5"><div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[40px]"><div class="h-full ${col}" style="width:${pct/1.5}%"></div></div><span class="text-[11px] font-bold w-9 text-right">${c.toFixed(2)}</span></div>`;
+    };
+
+    const rows = d.rows.map(r => `
+        <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2 font-bold text-slate-800">${escapeHtml(r.studentName)}</td>
+            <td class="px-3 py-2 text-slate-500">${escapeHtml(r.teamName)}</td>
+            <td class="px-3 py-2 text-center font-bold text-orange-600">${fmt(r.received)}</td>
+            <td class="px-3 py-2 text-center text-slate-500">${r.receivedCount}</td>
+            ${d.hasSelf?`<td class="px-3 py-2 text-center text-slate-600">${fmt(r.self)}</td><td class="px-3 py-2 text-center">${gapCell(r.gap)}</td>`:''}
+            <td class="px-3 py-2 min-w-[120px]">${contribCell(r.contribution)}</td>
+        </tr>`).join('');
+
+    $('peer-analysis').innerHTML = `
+    <div class="bg-orange-50/40 border border-orange-200 rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <h3 class="text-sm font-bold text-orange-700 flex items-center gap-1.5"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> 동료평가 기여도 분석</h3>
+            <div class="flex items-center gap-2">
+                <button onclick="exportPeerCSV()" class="py-1 px-2.5 bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold rounded-lg cursor-pointer inline-flex items-center gap-1"><i data-lucide="file-down" class="w-3 h-3"></i> 분석 CSV</button>
+            </div>
+        </div>
+        <p class="text-[11px] text-slate-600 mb-3">
+            <b>받은점수</b>=팀원들이 준 평균(타인평가, ${max}점 만점) ·
+            <b>상대기여도</b>=팀평균 대비 배수(1.0=평균, ↑기여 많음)
+            ${d.hasSelf?' · <b>격차</b>=자기평가−받은점수(<span class="text-red-600">+과대</span>/<span class="text-blue-600">−과소</span>)':' · (자기평가·격차는 실명+자기평가 문항이 있을 때만)'}
+        </p>
+        <div class="overflow-x-auto bg-white rounded-xl border border-slate-200">
+            <table class="w-full text-xs">
+                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase">
+                    <tr>
+                        <th class="text-left px-3 py-2 font-bold">학생</th>
+                        <th class="text-left px-3 py-2 font-bold">팀</th>
+                        <th class="text-center px-3 py-2 font-bold">받은점수<br>(타인)</th>
+                        <th class="text-center px-3 py-2 font-bold">평가<br>횟수</th>
+                        ${d.hasSelf?'<th class="text-center px-3 py-2 font-bold">자기<br>평가</th><th class="text-center px-3 py-2 font-bold">격차</th>':''}
+                        <th class="text-left px-3 py-2 font-bold">상대 기여도</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">${rows || '<tr><td colspan="7" class="text-center text-slate-400 py-6">응답 데이터가 없습니다</td></tr>'}</tbody>
+            </table>
+        </div>
+        ${d.survey.anonymous?'<p class="text-[10px] text-amber-600 mt-2">⚠ 익명 설문이라 자기평가·격차 분석은 제공되지 않습니다 (받은점수·상대기여도만). 본인:타인 분석이 필요하면 실명 설문으로 진행하세요.</p>':''}
+    </div>`;
+    lucide.createIcons();
+}
+
+function exportPeerCSV() {
+    if (!peerData) return;
+    const d = peerData;
+    const head = ['학생','학번','팀','받은점수(타인)','평가횟수','준점수'];
+    if (d.hasSelf) head.push('자기평가','격차(자기-타인)');
+    head.push('상대기여도');
+    const rows = [head];
+    d.rows.forEach(r => {
+        const row = [r.studentName, r.studentId, r.teamName,
+            r.received!=null?r.received.toFixed(2):'', r.receivedCount,
+            r.given!=null?r.given.toFixed(2):''];
+        if (d.hasSelf) row.push(r.self!=null?r.self.toFixed(2):'', r.gap!=null?r.gap.toFixed(2):'');
+        row.push(r.contribution!=null?r.contribution.toFixed(2):'');
+        rows.push(row);
+    });
+    const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), {href:url, download:`기여도분석_${d.survey.title}_${new Date().toISOString().slice(0,10)}.csv`});
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('기여도 분석 CSV 저장 완료');
+}
+
+function exportResultsCSV() {
+    if (!viewingResults) return;
+    const v = viewingResults;
+    const rows = [['응답ID','이름','학번','팀','일시', ...v.questions.map(q => q.text)]];
+    v.responses.forEach(r => {
+        const row = [r.responseId, r.studentName, r.studentId, r.teamName, new Date(r.submittedAt).toLocaleString('ko-KR')];
+        v.questions.forEach(q => {
+            const a = r.answers[q.questionKey];
+            if (a !== undefined && a !== null && typeof a === 'object' && !Array.isArray(a)) {
+                row.push(Object.entries(a).map(([k,v]) => `${k}:${v}`).join(' | '));
+            } else {
+                row.push(Array.isArray(a) ? a.join(', ') : (a ?? ''));
+            }
+        });
+        rows.push(row);
+    });
+    const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), {href:url, download:`설문결과_${v.survey.title}_${new Date().toISOString().slice(0,10)}.csv`});
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('CSV 저장 완료');
+}
+
+const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+
+/* ── 3중 통합 시스템 안내 토글 ── */
+function toggleIhelp() {
+    const panel = $('ihelp-panel');
+    const chev  = $('ihelp-chevron');
+    const isHidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !isHidden);
+    if (chev) chev.style.transform = isHidden ? 'rotate(180deg)' : '';
+    if (isHidden) lucide.createIcons();
+}
+
+/* ── INIT ── */
+lucide.createIcons();
+$('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') adminLogin(); });
+const savedToken = sessionStorage.getItem('admin_token');
+if (savedToken && !isTokenExpired()) {
+    token = savedToken;
+    onLoginSuccess();
+} else if (savedToken) {
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_token_at');
+    showToast('세션이 만료되어 다시 로그인이 필요합니다', 'warn');
+}
+</script>
+
+<!-- ⚡ 자가진단 일괄 출제 (quiz bulk import patch) -->
+<div id="bulkq" style="position:fixed;right:16px;bottom:16px;width:340px;max-height:72vh;overflow:auto;background:#fff;border:1px solid #c8d7f5;border-radius:14px;box-shadow:0 8px 24px rgba(11,27,61,.16);padding:14px;z-index:9999;font-size:12px;color:#3a4868">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <b style="color:#1c60ef">⚡ 자가진단 일괄 출제</b>
+    <button type="button" onclick="document.getElementById('bulkq').style.display='none'" style="border:none;background:#eef4ff;border-radius:8px;padding:2px 8px;cursor:pointer">×</button>
+  </div>
+  <p style="color:#6f7b96;margin:0 0 6px;line-height:1.4">상단에서 <b>과목 선택</b> 후, 평가폴더의 <b>출제용 JSON</b>을 붙여넣고 등록하세요. 정답·해설은 문항 설명의 <b>[정답]/[해설]</b> 마커로 자동채점됩니다(학생 화면엔 숨김).</p>
+  <textarea id="bq-json" rows="5" placeholder='{"surveys":[ ... ]}' style="width:100%;border:1px solid #c8d7f5;border-radius:8px;padding:6px;font-family:monospace;font-size:11px"></textarea>
+  <button type="button" id="bq-btn" onclick="bulkImportQuiz()" style="width:100%;margin-top:6px;background:#1c60ef;color:#fff;border:none;border-radius:8px;padding:8px;font-weight:bold;cursor:pointer">선택 과목에 일괄 출제</button>
+  <div id="bq-log" style="margin-top:6px;color:#3a4868;white-space:pre-wrap;font-size:11px"></div>
+</div>
+<script>
+async function bulkImportQuiz(){
+  try{
+    if(typeof currentSubject==='undefined' || !currentSubject){ alert('상단에서 과목을 먼저 선택하세요'); return; }
+    var raw=document.getElementById('bq-json').value.trim();
+    if(!raw){ alert('출제용 JSON을 붙여넣으세요'); return; }
+    var data=JSON.parse(raw);
+    var surveys=Array.isArray(data)?data:(data.surveys||[]);
+    if(!surveys.length){ alert('surveys 배열이 비어 있습니다'); return; }
+    var _verr=[];
+    surveys.forEach(function(s){ (s.questions||[]).forEach(function(q,qi){ var mm=(q.description||'').match(/\[정답\]\s*([^\n\[]*)/); var ans=mm?mm[1].trim():''; if(!ans){ _verr.push((s.title||'')+' Q'+(qi+1)+': 정답 마커 없음'); return; } if(q.options && q.options.length){ var _keys=(q.type==='multiple')?ans.split(/[,，]/).map(function(x){return x.trim();}).filter(Boolean):[ans]; _keys.forEach(function(k){ if(q.options.indexOf(k)<0) _verr.push((s.title||'')+' Q'+(qi+1)+": 정답 '"+k+"' 가 보기에 없음"); }); } }); });
+    if(_verr.length){ document.getElementById('bq-log').textContent='⚠ 출제 중단 — 정답/보기 불일치 '+_verr.length+'건:\n'+_verr.join('\n'); return; }
+
+    var btn=document.getElementById('bq-btn'); var _ot=btn.textContent; btn.disabled=true; btn.textContent='⏳ 출제 중…';
+    var ok=0, fail=0, log=[];
+    for(var i=0;i<surveys.length;i++){
+      var s=surveys[i];
+      try{
+        var questions=(s.questions||[]).map(function(q){
+          return {type:q.type||'short', text:q.text||'', options:Array.isArray(q.options)?q.options:[], required:true, description:q.description||''};
+        });
+        await api('adminCreateSurvey',{
+          token:token, subjectKey:currentSubject,
+          title:s.title||'자가진단', description:s.description||'',
+          type:s.type||'quiz', anonymous:'no', allowMultiple:'no',
+          startAt:s.startAt||'', endAt:s.endAt||'', active:'yes',
+          payload:JSON.stringify({questions:questions})
+        },'POST');
+        ok++; log.push('✓ '+(s.title||''));
+      }catch(e){ fail++; log.push('✗ '+(s.title||'')+' — '+e.message); }
+    }
+    btn.disabled=false; btn.textContent=_ot;
+    document.getElementById('bq-log').textContent=log.join('\n')+'\n\n완료: 성공 '+ok+' / 실패 '+fail;
+    if(typeof loadList==='function'){ try{ await loadList(); }catch(_){} }
+  }catch(e){ alert('오류: '+e.message); }
+}
+</script>
+
+</body>
+</html>

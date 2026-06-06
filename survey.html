@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>설문·피드백 응답 · Smart Submission</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    body { font-family:'Noto Sans KR',sans-serif; background:#f0f2fa; }
+    #toast { transition:opacity .3s, transform .3s; }
+    #toast.hide { opacity:0; transform:translateY(8px) scale(.97); pointer-events:none; }
+    .step-card { transition:opacity .3s; }
+    .step-card.locked { opacity:.45; pointer-events:none; }
+    select:disabled { background:#f1f5f9; color:#94a3b8; cursor:not-allowed; }
+    .likert-btn { transition:all .15s; }
+    .likert-btn.selected { background:#0ea5e9 !important; color:white !important; border-color:#0284c7 !important; transform:scale(1.05); }
+    .opt-card { transition:all .15s; cursor:pointer; }
+    .opt-card.selected { background:#eff6ff !important; border-color:#3b82f6 !important; box-shadow:0 0 0 1px #3b82f6; }
+    .opt-card:hover:not(.selected) { background:#f8fafc; border-color:#cbd5e1; }
+</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen">
+
+<script>
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbw9k-9lYg9GivdUEG6pPODPxP5S4B5tONDT3q33GcO50vMAbymQ1v60O6xZA9m626KwUw/exec';
+</script>
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-sky-600 text-white rounded-xl shadow-md shadow-sky-200">
+                <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 tracking-tight">설문·피드백 응답</h1>
+                <p class="text-xs text-slate-500">년도·학기·과목·팀·본인 5단계 확인</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="guide.html" target="_blank" rel="noopener" class="flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg text-slate-600 transition shrink-0" title="사용 가이드">
+                <i data-lucide="circle-help" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">도움말</span>
+            </a>
+            <div id="me-badge" class="hidden items-center gap-2 text-xs bg-sky-50 px-3 py-1.5 rounded-lg text-sky-700 border border-sky-200 max-w-[50%]">
+                <i data-lucide="user-check" class="w-3.5 h-3.5 shrink-0"></i>
+                <span id="me-label" class="font-bold truncate"></span>
+                <button onclick="logout()" class="ml-1 text-sky-500 hover:text-red-500 shrink-0" title="로그아웃">×</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div id="toast" class="hide fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2 min-w-max">
+    <i id="toast-icon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-msg">완료</span>
+</div>
+
+<main class="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+
+    <!-- 3중 통합 시스템 안내 -->
+    <section class="bg-gradient-to-r from-slate-50 via-emerald-50/40 to-amber-50/40 border border-emerald-100 rounded-2xl overflow-hidden">
+        <button onclick="toggleIhelp()" class="w-full px-4 py-3 flex items-center justify-between hover:bg-white/40 transition cursor-pointer text-left">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-base">📚</span>
+                <span class="text-sm font-bold text-slate-700">3중 통합 시스템 — 산출물 제출 채널</span>
+                <span class="hidden lg:inline text-[10px] text-slate-500">GitHub → Smart Submission → 협업게시판</span>
+                <span class="text-[10px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded">📋 본 페이지: 설문/피드백</span>
+            </div>
+            <i data-lucide="chevron-down" id="ihelp-chevron" class="w-4 h-4 text-slate-500 transition-transform shrink-0"></i>
+        </button>
+        <div id="ihelp-panel" class="hidden px-4 pb-4 pt-2 border-t border-emerald-100">
+            <p class="text-xs text-slate-600 mb-3">본 과목은 다음 3개 시스템 + 설문/피드백을 통합 운영합니다.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div class="bg-white p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-slate-800 text-white px-2 py-0.5 rounded">① GitHub</span>
+                        <span class="text-[10px] text-red-600 font-bold">매주 18:20</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">팀 저장소 commit·push</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">실습 결과물 1차 저장</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-emerald-200">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded">② Smart Submission</span>
+                        <span class="text-[10px] text-emerald-700 font-bold">평가 채널</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">주차별 보고서·과제</p>
+                    <a href="submit.html" class="text-[10px] text-emerald-700 font-bold hover:underline mt-1 inline-flex items-center gap-1">
+                        과제 제출 페이지 <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+                    </a>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-amber-200">
+                    <div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded">③ 협업게시판</span>
+                        <span class="text-[10px] text-slate-500">발표 후 공개</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">시연 영상·자료 공개</p>
+                    <a href="https://script.google.com/macros/s/AKfycbz9o-9fIRA21I9YLYFuvGPhlLY6LtrRBR4yyzFJGFpfRmBM_4X9_TKo0SebDmOuLyMz/exec" target="_blank" rel="noopener" class="text-[10px] text-amber-700 font-bold hover:underline mt-1 inline-flex items-center gap-1">
+                        바로가기 <i data-lucide="external-link" class="w-2.5 h-2.5"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="mt-3 bg-sky-50 rounded-lg p-2.5 border border-sky-100">
+                <p class="text-[10px] text-sky-700 font-bold mb-0.5">📋 본 페이지 (설문/피드백) — 평가가 아닌 의견 수렴</p>
+                <p class="text-[10px] text-slate-600">수업 평가 · 동료 평가 · 자기 성찰 · 일반 설문 등 응답</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- STEP 1: 인증 -->
+    <section id="step-auth" class="step-card bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="w-6 h-6 rounded-full bg-sky-600 text-white text-xs font-bold flex items-center justify-center">1</span>
+            <h2 class="text-sm font-bold">수강 정보 선택 및 본인 확인</h2>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">① 년도</label>
+                <select id="year-sel" onchange="onYearChange()" class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
+                    <option value="">선택</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">② 학기</label>
+                <select id="semester-sel" onchange="onSemesterChange()" disabled class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
+                    <option value="">-</option>
+                </select>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">③ 과목</label>
+                <select id="subject-sel" onchange="onSubjectChange()" disabled class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
+                    <option value="">-</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">④ 팀</label>
+                <select id="team-sel" disabled class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
+                    <option value="">-</option>
+                </select>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">⑤ 이름 (ID)</label>
+                <input id="auth-name" type="text" placeholder="예: 홍길동" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">⑥ 학번 (PW)</label>
+                <input id="auth-id" type="text" placeholder="예: 2022243107" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition">
+            </div>
+        </div>
+        <button onclick="login()" class="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2">
+            <i data-lucide="log-in" class="w-4 h-4"></i> 입장
+        </button>
+    </section>
+
+    <!-- 우리 팀 구성원 (조편성 자동 동기화) -->
+    <section id="step-team" class="step-card locked bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hidden">
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+            <span class="text-base">👥</span>
+            <h2 class="text-sm font-bold">우리 팀 구성원</h2>
+            <span id="team-count-badge" class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-bold">0명</span>
+            <span class="ml-auto text-[10px] text-slate-400">📌 조편성기와 자동 동기화</span>
+        </div>
+        <div id="team-by-pair" class="space-y-3"></div>
+    </section>
+
+    <!-- STEP 2: 설문 목록 -->
+    <section id="step-list" class="step-card locked bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hidden">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-sky-600 text-white text-xs font-bold flex items-center justify-center">2</span>
+                <h2 class="text-sm font-bold">참여 가능한 설문</h2>
+            </div>
+            <button onclick="loadSurveys()" class="p-1.5 text-slate-400 hover:text-sky-600 transition cursor-pointer" title="새로고침">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+        </div>
+        <div id="survey-list" class="space-y-2">
+            <p class="text-xs text-slate-400 text-center py-6">불러오는 중…</p>
+        </div>
+    </section>
+
+    <!-- STEP 3: 응답 폼 -->
+    <section id="step-form" class="step-card bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hidden">
+        <div class="flex items-center justify-between mb-3">
+            <button onclick="backToList()" class="text-xs text-slate-500 hover:text-sky-600 inline-flex items-center gap-1 transition cursor-pointer">
+                <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 목록으로
+            </button>
+            <span id="form-type-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full"></span>
+        </div>
+        <div class="border-b border-slate-100 pb-3 mb-4">
+            <h2 id="form-title" class="text-base font-bold text-slate-900 mb-1"></h2>
+            <p id="form-desc" class="text-xs text-slate-500 leading-relaxed whitespace-pre-line"></p>
+            <div id="form-anon" class="hidden mt-2 text-[10px] inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md border border-amber-200">
+                <i data-lucide="eye-off" class="w-3 h-3"></i> 익명 설문 — 응답자 정보가 저장되지 않습니다
+            </div>
+        </div>
+        <div id="form-questions" class="space-y-4"></div>
+        <div class="mt-5 flex items-center gap-2">
+            <button id="submit-btn" onclick="submitForm()" class="flex-1 py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-sm transition inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i data-lucide="send" class="w-4 h-4"></i> 응답 제출
+            </button>
+            <button onclick="backToList()" class="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition cursor-pointer">취소</button>
+        </div>
+    </section>
+
+    <!-- STEP 4: 자가진단 채점 결과 (quiz patch v2) -->
+    <section id="step-result" class="step-card bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hidden">
+        <div class="text-center border-b border-slate-100 pb-4 mb-4">
+            <p class="text-xs text-slate-500 mb-1">자가진단 결과 · 형성평가(등급 미반영)</p>
+            <p id="result-score" class="text-3xl font-bold text-indigo-600"></p>
+            <p id="result-sub" class="text-xs text-slate-500 mt-1"></p>
+        </div>
+        <div id="result-list" class="space-y-3"></div>
+        <button onclick="backToList()" class="mt-5 w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">목록으로</button>
+    </section>
+
+</main>
+
+<script>
+let me        = null;
+let subjects  = [];
+let surveys   = [];
+let currentSurvey  = null;
+let currentAnswers = {};
+let toastTimer = null;
+const $ = id => document.getElementById(id);
+
+function showToast(msg, type='ok') {
+    clearTimeout(toastTimer);
+    const t=$('toast'), ico=$('toast-icon'), txt=$('toast-msg');
+    ico.setAttribute('data-lucide', type==='warn'?'alert-triangle':type==='err'?'x-circle':'check-circle');
+    ico.className = `w-4 h-4 ${type==='warn'?'text-amber-400':type==='err'?'text-red-400':'text-emerald-400'}`;
+    txt.textContent = msg; lucide.createIcons({nodes:[ico]});
+    t.classList.remove('hide');
+    toastTimer = setTimeout(() => t.classList.add('hide'), 3500);
+}
+
+async function api(action, params={}, method='GET') {
+    if (APPS_URL.startsWith('PASTE_')) throw new Error('APPS_URL 설정이 필요합니다');
+    if (method === 'GET') {
+        const url = new URL(APPS_URL);
+        url.searchParams.set('action', action);
+        Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+        const r = await fetch(url.toString(), {method:'GET', redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    } else {
+        const fd = new FormData();
+        fd.append('action', action);
+        Object.entries(params).forEach(([k,v]) => fd.append(k, v));
+        const r = await fetch(APPS_URL, {method:'POST', body:fd, redirect:'follow'});
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '서버 오류');
+        return j.data;
+    }
+}
+
+/* ── 5단계 cascade ── */
+async function loadSubjects() {
+    try {
+        subjects = await api('getSubjects');
+        const years = [...new Set(subjects.map(s => s.year))].sort((a,b) => b-a);
+        const yS = $('year-sel');
+        yS.innerHTML = '<option value="">선택</option>' + years.map(y => `<option value="${y}">${y}년</option>`).join('');
+        if (years.length === 1) { yS.value = String(years[0]); onYearChange(); }
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function onYearChange() {
+    const y = parseInt($('year-sel').value);
+    const sS = $('semester-sel'), sjS = $('subject-sel'), tS = $('team-sel');
+    sS.innerHTML = '<option value="">-</option>';
+    sjS.innerHTML = '<option value="">-</option>'; sjS.disabled = true;
+    tS.innerHTML = '<option value="">-</option>'; tS.disabled = true;
+    if (!y) { sS.disabled = true; return; }
+    const sems = [...new Set(subjects.filter(s => s.year === y).map(s => s.semester))].sort();
+    sS.innerHTML = '<option value="">선택</option>' + sems.map(s => `<option value="${s}">${s}학기</option>`).join('');
+    sS.disabled = false;
+    if (sems.length === 1) { sS.value = String(sems[0]); onSemesterChange(); }
+}
+
+function onSemesterChange() {
+    const y = parseInt($('year-sel').value);
+    const s = parseInt($('semester-sel').value);
+    const sjS = $('subject-sel'), tS = $('team-sel');
+    sjS.innerHTML = '<option value="">-</option>';
+    tS.innerHTML = '<option value="">-</option>'; tS.disabled = true;
+    if (!y || !s) { sjS.disabled = true; return; }
+    const cands = subjects.filter(s2 => s2.year === y && s2.semester === s);
+    sjS.innerHTML = '<option value="">선택</option>' +
+        cands.map(c => `<option value="${c.subjectKey}">${escapeHtml(c.subjectName)}</option>`).join('');
+    sjS.disabled = false;
+    if (cands.length === 1) { sjS.value = cands[0].subjectKey; onSubjectChange(); }
+}
+
+async function onSubjectChange() {
+    const tS = $('team-sel');
+    tS.innerHTML = '<option value="">불러오는 중…</option>'; tS.disabled = true;
+    const sk = $('subject-sel').value;
+    if (!sk) { tS.innerHTML = '<option value="">-</option>'; return; }
+    try {
+        const teams = await api('getTeams', {subjectKey: sk});
+        if (!teams.length) {
+            tS.innerHTML = '<option value="">등록된 팀 없음</option>';
+            return;
+        }
+        tS.innerHTML = '<option value="">선택</option>' +
+            teams.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+        tS.disabled = false;
+    } catch(e) {
+        tS.innerHTML = '<option value="">불러오기 실패</option>';
+        showToast(e.message, 'err');
+    }
+}
+
+async function login() {
+    const subjectKey = $('subject-sel').value;
+    const teamName   = $('team-sel').value;
+    const studentName = $('auth-name').value.trim();
+    const studentId   = $('auth-id').value.trim();
+    if (!subjectKey || !teamName || !studentName || !studentId)
+        return showToast('모든 항목을 선택/입력하세요', 'warn');
+    try {
+        me = await api('verifyStudent', {subjectKey, teamName, studentName, studentId});
+        sessionStorage.setItem('me', JSON.stringify(me));
+        onLoginSuccess();
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function logout() {
+    me = null; surveys = []; currentSurvey = null;
+    sessionStorage.removeItem('me');
+    location.reload();
+}
+
+function onLoginSuccess() {
+    $('me-label').textContent = `${me.displayName} · ${me.teamName} · ${me.studentName} (${me.studentId})`;
+    $('me-badge').classList.remove('hidden');
+    $('me-badge').classList.add('flex');
+    $('step-auth').classList.add('locked');
+    $('step-list').classList.remove('hidden');
+    $('step-list').classList.remove('locked');
+    if (me.teamName) {
+        $('step-team').classList.remove('hidden');
+        $('step-team').classList.remove('locked');
+        renderTeamMembers();
+    }
+    loadSurveys();
+}
+
+/* 팀원 목록 — 짝 A/B 그룹화 (조편성기 동기화) */
+function renderTeamMembers() {
+    const meSelf = {studentName: me.studentName, studentId: me.studentId, pair: me.pair || ''};
+    const members = [meSelf, ...(me.teamMembers || [])];
+    $('team-count-badge').textContent = `${members.length}명`;
+    const groups = { A: [], B: [], '': [] };
+    members.forEach(m => {
+        const p = String(m.pair || '').trim().toUpperCase();
+        if (p === 'A') groups.A.push(m);
+        else if (p === 'B') groups.B.push(m);
+        else groups[''].push(m);
+    });
+    const renderGroup = (list, color, label) => {
+        if (!list.length) return '';
+        return `
+        <div class="bg-${color}-50 border border-${color}-200 rounded-xl p-3">
+            <p class="text-[11px] font-bold text-${color}-700 mb-2 flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 bg-${color}-400 rounded-full"></span>
+                ${label} <span class="text-[10px] font-normal text-${color}-600">(${list.length}명)</span>
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                ${list.map(m => {
+                    const isSelf = m.studentName === me.studentName && m.studentId === me.studentId;
+                    return `<div class="bg-${isSelf?color+'-100':'white'} border border-${isSelf?color+'-400':color+'-200'} rounded-lg p-2 flex items-center gap-2 ${isSelf?'ring-2 ring-'+color+'-300':''}">
+                        <i data-lucide="${isSelf?'user-check':'user'}" class="w-3.5 h-3.5 ${isSelf?(color==='blue'?'text-blue-700':'text-violet-700'):'text-slate-400'} shrink-0"></i>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(m.studentName)}${isSelf?' (나)':''}</p>
+                            <p class="text-[10px] font-mono text-slate-500">${escapeHtml(m.studentId)}</p>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    };
+    const hasPairs = groups.A.length > 0 || groups.B.length > 0;
+    let html = '';
+    if (hasPairs) {
+        html += renderGroup(groups.A, 'blue',   '🅰️ 짝 A');
+        html += renderGroup(groups.B, 'violet', '🅱️ 짝 B');
+        if (groups[''].length) {
+            html += `<div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-3">
+                <p class="text-[11px] font-bold text-slate-500 mb-2">⚠ 짝 미지정 (${groups[''].length}명)</p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    ${groups[''].map(m => {
+                        const isSelf = m.studentName === me.studentName && m.studentId === me.studentId;
+                        return `<div class="bg-white border border-slate-200 rounded-lg p-2 flex items-center gap-2 ${isSelf?'ring-2 ring-slate-300':''}">
+                            <i data-lucide="user" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(m.studentName)}${isSelf?' (나)':''}</p>
+                                <p class="text-[10px] font-mono text-slate-500">${escapeHtml(m.studentId)}</p>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }
+    } else {
+        html = `<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            ${members.map(m => {
+                const isSelf = m.studentName === me.studentName && m.studentId === me.studentId;
+                return `<div class="bg-${isSelf?'slate-100':'slate-50'} border border-${isSelf?'slate-400':'slate-200'} rounded-lg p-2 flex items-center gap-2">
+                    <i data-lucide="${isSelf?'user-check':'user'}" class="w-3.5 h-3.5 ${isSelf?'text-slate-700':'text-slate-400'} shrink-0"></i>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(m.studentName)}${isSelf?' (나)':''}</p>
+                        <p class="text-[10px] font-mono text-slate-500">${escapeHtml(m.studentId)}</p>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">💡 짝 A/B 정보가 없습니다. 조편성기로 적용 시 자동 그룹화됩니다.</p>`;
+    }
+    $('team-by-pair').innerHTML = html;
+    lucide.createIcons();
+}
+
+/* ── 설문 목록 ── */
+async function loadSurveys() {
+    const area = $('survey-list');
+    area.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">불러오는 중…</p>';
+    try {
+        surveys = await api('getSurveys', {
+            subjectKey: me.subjectKey, teamName: me.teamName,
+            studentName: me.studentName, studentId: me.studentId
+        });
+        if (!surveys.length) {
+            area.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">현재 참여 가능한 설문이 없습니다</p>';
+            return;
+        }
+        area.innerHTML = surveys.map(renderSurveyCard).join('');
+        lucide.createIcons();
+    } catch(e) {
+        area.innerHTML = `<p class="text-xs text-red-500 text-center py-4">${escapeHtml(e.message)}</p>`;
+    }
+}
+
+const TYPE_COLOR = {
+    quiz:{bg:'bg-indigo-100',text:'text-indigo-700',label:'자가진단'},
+    evaluation:{bg:'bg-violet-100',text:'text-violet-700',label:'수업평가'},
+    peer:      {bg:'bg-orange-100',text:'text-orange-700',label:'동료평가'},
+    general:   {bg:'bg-sky-100',   text:'text-sky-700',   label:'일반설문'},
+    selfreview:{bg:'bg-emerald-100',text:'text-emerald-700',label:'자기성찰'}
+};
+
+function renderSurveyCard(s) {
+    const t = TYPE_COLOR[s.type] || TYPE_COLOR.general;
+    const period = (s.startAt || s.endAt) ?
+        `${s.startAt ? new Date(s.startAt).toLocaleDateString('ko-KR') : ''} ~ ${s.endAt ? new Date(s.endAt).toLocaleDateString('ko-KR') : ''}` : '';
+    return `
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 ${s.canRespond ? 'hover:border-sky-300 cursor-pointer' : 'opacity-70'} transition"
+         ${s.canRespond ? `onclick="openSurvey('${s.surveyKey}')"` : ''}>
+        <div class="flex items-start gap-2">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <span class="text-[10px] font-bold ${t.bg} ${t.text} px-1.5 py-0.5 rounded">${t.label}</span>
+                    ${s.anonymous ? '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">익명</span>' : ''}
+                    ${s.responded ? (s.canRespond
+                        ? '<span class="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">재응답 가능</span>'
+                        : '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">✓ 응답 완료</span>')
+                        : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">● 미응답</span>'}
+                </div>
+                <p class="text-sm font-bold text-slate-800 truncate">${escapeHtml(s.title)}</p>
+                ${s.description ? `<p class="text-[10px] text-slate-500 mt-0.5 line-clamp-2">${escapeHtml(s.description)}</p>` : ''}
+                ${period ? `<p class="text-[10px] text-slate-400 mt-1"><i data-lucide="calendar" class="w-2.5 h-2.5 inline"></i> ${period}</p>` : ''}
+            </div>
+            ${s.canRespond ? '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0 mt-1"></i>' : '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 shrink-0 mt-1"></i>'}
+        </div>
+    </div>`;
+}
+
+/* ── 응답 폼 ── */
+async function openSurvey(surveyKey) {
+    try {
+        currentSurvey = await api('getSurveyDetail', {
+            surveyKey, studentName: me.studentName, studentId: me.studentId
+        });
+        currentAnswers = currentSurvey.lastResponse || {};
+        renderForm();
+        $('step-list').classList.add('hidden');
+        $('step-form').classList.remove('hidden');
+        window.scrollTo({top:0, behavior:'smooth'});
+    } catch(e) { showToast(e.message, 'err'); }
+}
+
+function backToList() {
+    $('step-result').classList.add('hidden');
+    $('step-form').classList.add('hidden');
+    $('step-list').classList.remove('hidden');
+    currentSurvey = null; currentAnswers = {};
+    loadSurveys();
+}
+
+function renderForm() {
+    const s = currentSurvey;
+    $('form-title').textContent = s.title;
+    $('form-desc').textContent  = s.description || '';
+    const t = TYPE_COLOR[s.type] || TYPE_COLOR.general;
+    $('form-type-badge').className = `text-[10px] font-bold px-2 py-0.5 rounded-full ${t.bg} ${t.text}`;
+    $('form-type-badge').textContent = t.label;
+    $('form-anon').classList.toggle('hidden', !s.anonymous);
+
+    $('form-questions').innerHTML = s.questions.map((q,i) => renderQuestion(q, i+1)).join('');
+    lucide.createIcons();
+    bindQuestionEvents();
+}
+
+function renderQuestion(q, idx) {
+    const reqMark = q.required ? '<span class="text-red-500">*</span>' : '';
+    const head = `
+        <div class="mb-2">
+            <p class="text-sm font-bold text-slate-800">${idx}. ${escapeHtml(q.text)} ${reqMark}</p>
+            ${q.description ? `<p class="text-[10px] text-slate-500 mt-0.5 whitespace-pre-line">${escapeHtml(stripQuizMarkers(q.description))}</p>` : ''}
+        </div>`;
+    let body = '';
+    const saved = currentAnswers[q.questionKey];
+
+    if (q.type === 'likert5' || q.type === 'likert7') {
+        const n = q.type === 'likert5' ? 5 : 7;
+        const labels = q.type === 'likert5' ? ['매우 부정','부정','보통','긍정','매우 긍정'] : ['1','2','3','4','5','6','7'];
+        const cells = [];
+        for (let i=1; i<=n; i++) {
+            const sel = String(saved) === String(i) ? 'selected' : '';
+            cells.push(`<button type="button" class="likert-btn ${sel} flex-1 py-2 rounded-lg border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 text-xs font-bold transition" data-qkey="${q.questionKey}" data-val="${i}">${i}${q.type==='likert5'?'<br><span class="text-[8px] font-normal text-slate-500">'+labels[i-1]+'</span>':''}</button>`);
+        }
+        body = `<div class="flex gap-1">${cells.join('')}</div>`;
+    } else if (q.type === 'single') {
+        body = q.options.map(opt => {
+            const sel = saved === opt ? 'selected' : '';
+            return `<div class="opt-card ${sel} border border-slate-200 rounded-lg px-3 py-2 text-sm flex items-center gap-2" data-qkey="${q.questionKey}" data-val="${escapeHtml(opt)}">
+                <i data-lucide="${sel ? 'check-circle-2' : 'circle'}" class="w-4 h-4 ${sel?'text-blue-500':'text-slate-300'}"></i>
+                <span>${escapeHtml(opt)}</span>
+            </div>`;
+        }).join('');
+        body = `<div class="space-y-1.5">${body}</div>`;
+    } else if (q.type === 'multiple') {
+        const selArr = Array.isArray(saved) ? saved : [];
+        body = q.options.map(opt => {
+            const sel = selArr.includes(opt) ? 'selected' : '';
+            return `<div class="opt-card multi ${sel} border border-slate-200 rounded-lg px-3 py-2 text-sm flex items-center gap-2" data-qkey="${q.questionKey}" data-val="${escapeHtml(opt)}">
+                <i data-lucide="${sel ? 'check-square' : 'square'}" class="w-4 h-4 ${sel?'text-blue-500':'text-slate-300'}"></i>
+                <span>${escapeHtml(opt)}</span>
+            </div>`;
+        }).join('');
+        body = `<div class="space-y-1.5">${body}</div>`;
+    } else if (q.type === 'short') {
+        body = `<input type="text" class="answer-input w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition" data-qkey="${q.questionKey}" placeholder="답변" value="${escapeHtml(saved || '')}">`;
+    } else if (q.type === 'long') {
+        body = `<textarea rows="4" class="answer-input w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition resize-none" data-qkey="${q.questionKey}" placeholder="답변을 입력하세요">${escapeHtml(saved || '')}</textarea>`;
+    } else if (q.type === 'peer_likert5' || q.type === 'peer_likert7') {
+        const n = q.type === 'peer_likert5' ? 5 : 7;
+        const members = me.teamMembers || [];
+        if (!members.length) {
+            body = '<p class="text-xs text-amber-600 italic">⚠ 같은 팀에 다른 팀원이 등록되어 있지 않습니다.</p>';
+        } else {
+            const savedObj = (saved && typeof saved === 'object') ? saved : {};
+            const isAnswered = (mn) => savedObj[mn] !== undefined && savedObj[mn] !== '' && savedObj[mn] !== null;
+            const answeredCount = members.filter(m => isAnswered(m.studentName)).length;
+            const scale5 = ['매우 부족','부족','보통','우수','매우 우수'];
+
+            const headerCells = [];
+            for (let i=1; i<=n; i++) {
+                headerCells.push(`<th class="text-center text-[10px] font-bold text-slate-500 py-1 min-w-[40px]">${i}${n===5?'<br><span class="font-normal text-[8px] text-slate-400">'+scale5[i-1]+'</span>':''}</th>`);
+            }
+            const rows = members.map(m => {
+                const answered = isAnswered(m.studentName);
+                const cells = [];
+                for (let i=1; i<=n; i++) {
+                    const sel = String(savedObj[m.studentName]) === String(i) ? 'selected' : '';
+                    cells.push(`<td class="text-center p-1"><button type="button" class="peer-btn ${sel} w-full py-2 rounded-lg border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 text-sm font-bold transition" data-qkey="${q.questionKey}" data-target="${escapeHtml(m.studentName)}" data-val="${i}">${i}</button></td>`);
+                }
+                return `<tr class="border-t border-slate-100">
+                    <td class="px-2 py-2 whitespace-nowrap">
+                        <div class="flex items-center gap-1.5">
+                            <i data-lucide="${answered?'check-circle-2':'circle'}" class="peer-row-icon w-3.5 h-3.5 ${answered?'text-emerald-500':'text-slate-300'}" data-qkey="${q.questionKey}" data-target="${escapeHtml(m.studentName)}"></i>
+                            <span class="text-xs font-bold text-slate-700">${escapeHtml(m.studentName)}</span>
+                        </div>
+                    </td>
+                    ${cells.join('')}
+                </tr>`;
+            }).join('');
+            body = `
+            <div class="mb-2 flex items-center justify-between flex-wrap gap-2">
+                <p class="text-[11px] font-bold text-sky-700">💡 팀원 각자에 대해 ${n}점 만점으로 평가</p>
+                <span class="peer-progress text-[10px] font-bold ${answeredCount === members.length ? 'text-emerald-600 bg-emerald-100' : 'text-amber-600 bg-amber-100'} px-2 py-0.5 rounded-full" data-qkey="${q.questionKey}" data-total="${members.length}">${answeredCount} / ${members.length}명 평가됨</span>
+            </div>
+            <div class="overflow-x-auto bg-white rounded-lg border border-slate-200">
+                <table class="w-full">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="text-left text-[10px] font-bold text-slate-500 px-2 py-1.5">팀원</th>
+                            ${headerCells.join('')}
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+        }
+    } else if (q.type === 'peer_short' || q.type === 'peer_long') {
+        const members = me.teamMembers || [];
+        const isLong = q.type === 'peer_long';
+        if (!members.length) {
+            body = '<p class="text-xs text-amber-600 italic">⚠ 같은 팀에 다른 팀원이 등록되어 있지 않습니다.</p>';
+        } else {
+            const savedObj = (saved && typeof saved === 'object') ? saved : {};
+            const isAnswered = (mn) => savedObj[mn] !== undefined && savedObj[mn] !== '' && savedObj[mn] !== null;
+            const answeredCount = members.filter(m => isAnswered(m.studentName)).length;
+            body = `
+            <div class="mb-2 flex items-center justify-between flex-wrap gap-2">
+                <p class="text-[11px] font-bold text-sky-700">💡 팀원 각자에 대해 답변 작성</p>
+                <span class="peer-progress text-[10px] font-bold ${answeredCount === members.length ? 'text-emerald-600 bg-emerald-100' : 'text-amber-600 bg-amber-100'} px-2 py-0.5 rounded-full" data-qkey="${q.questionKey}" data-total="${members.length}">${answeredCount} / ${members.length}명 작성됨</span>
+            </div>
+            <div class="space-y-2">${members.map(m => {
+                const answered = isAnswered(m.studentName);
+                return `
+                <div class="bg-white p-2 rounded-lg border border-slate-200">
+                    <p class="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <i data-lucide="${answered?'check-circle-2':'circle'}" class="peer-row-icon w-3.5 h-3.5 ${answered?'text-emerald-500':'text-slate-300'}" data-qkey="${q.questionKey}" data-target="${escapeHtml(m.studentName)}"></i>
+                        ${escapeHtml(m.studentName)}
+                    </p>
+                    ${isLong
+                        ? `<textarea rows="2" class="peer-input w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-sky-400 resize-none" data-qkey="${q.questionKey}" data-target="${escapeHtml(m.studentName)}" placeholder="답변">${escapeHtml(savedObj[m.studentName] || '')}</textarea>`
+                        : `<input type="text" class="peer-input w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-sky-400" data-qkey="${q.questionKey}" data-target="${escapeHtml(m.studentName)}" placeholder="답변" value="${escapeHtml(savedObj[m.studentName] || '')}">`
+                    }
+                </div>`;
+            }).join('')}</div>`;
+        }
+    } else {
+        body = `<p class="text-xs text-slate-400">[지원하지 않는 질문 유형: ${escapeHtml(q.type)}]</p>`;
+    }
+
+    return `<div class="bg-slate-50/70 border border-slate-200 rounded-xl p-4">${head}${body}</div>`;
+}
+
+function bindQuestionEvents() {
+    // 리커트
+    document.querySelectorAll('.likert-btn').forEach(b => {
+        b.onclick = () => {
+            const qkey = b.dataset.qkey;
+            currentAnswers[qkey] = parseInt(b.dataset.val);
+            document.querySelectorAll(`.likert-btn[data-qkey="${qkey}"]`).forEach(x => x.classList.remove('selected'));
+            b.classList.add('selected');
+        };
+    });
+    // 단일 선택
+    document.querySelectorAll('.opt-card:not(.multi)').forEach(c => {
+        c.onclick = () => {
+            const qkey = c.dataset.qkey;
+            currentAnswers[qkey] = c.dataset.val;
+            document.querySelectorAll(`.opt-card[data-qkey="${qkey}"]:not(.multi)`).forEach(x => {
+                x.classList.remove('selected');
+                const ic = x.querySelector('[data-lucide]'); if (ic) { ic.setAttribute('data-lucide','circle'); ic.className = 'w-4 h-4 text-slate-300'; }
+            });
+            c.classList.add('selected');
+            const ic = c.querySelector('[data-lucide]');
+            if (ic) { ic.setAttribute('data-lucide','check-circle-2'); ic.className = 'w-4 h-4 text-blue-500'; }
+            lucide.createIcons();
+        };
+    });
+    // 복수 선택
+    document.querySelectorAll('.opt-card.multi').forEach(c => {
+        c.onclick = () => {
+            const qkey = c.dataset.qkey;
+            currentAnswers[qkey] = Array.isArray(currentAnswers[qkey]) ? currentAnswers[qkey] : [];
+            const val = c.dataset.val;
+            const idx = currentAnswers[qkey].indexOf(val);
+            if (idx >= 0) { currentAnswers[qkey].splice(idx, 1); c.classList.remove('selected'); }
+            else          { currentAnswers[qkey].push(val); c.classList.add('selected'); }
+            const ic = c.querySelector('[data-lucide]');
+            const isSel = c.classList.contains('selected');
+            if (ic) { ic.setAttribute('data-lucide', isSel?'check-square':'square'); ic.className = `w-4 h-4 ${isSel?'text-blue-500':'text-slate-300'}`; }
+            lucide.createIcons();
+        };
+    });
+    // 텍스트
+    document.querySelectorAll('.answer-input').forEach(inp => {
+        inp.oninput = () => { currentAnswers[inp.dataset.qkey] = inp.value; };
+    });
+    // 팀원 척도
+    document.querySelectorAll('.peer-btn').forEach(b => {
+        b.onclick = () => {
+            const qkey = b.dataset.qkey;
+            const target = b.dataset.target;
+            if (typeof currentAnswers[qkey] !== 'object' || currentAnswers[qkey] === null || Array.isArray(currentAnswers[qkey]))
+                currentAnswers[qkey] = {};
+            currentAnswers[qkey][target] = parseInt(b.dataset.val);
+            document.querySelectorAll(`.peer-btn[data-qkey="${qkey}"][data-target="${target}"]`).forEach(x => x.classList.remove('selected'));
+            b.classList.add('selected');
+            updatePeerProgress(qkey, target, true);
+        };
+    });
+    // 팀원 텍스트
+    document.querySelectorAll('.peer-input').forEach(inp => {
+        inp.oninput = () => {
+            const qkey = inp.dataset.qkey;
+            const target = inp.dataset.target;
+            if (typeof currentAnswers[qkey] !== 'object' || currentAnswers[qkey] === null || Array.isArray(currentAnswers[qkey]))
+                currentAnswers[qkey] = {};
+            currentAnswers[qkey][target] = inp.value;
+            updatePeerProgress(qkey, target, !!inp.value.trim());
+        };
+    });
+}
+
+/* 팀원 평가 진행도 + 행 아이콘 실시간 갱신 */
+function updatePeerProgress(qkey, justAnsweredTarget, isAnswered) {
+    // 행 아이콘 토글
+    document.querySelectorAll(`.peer-row-icon[data-qkey="${qkey}"][data-target="${justAnsweredTarget}"]`).forEach(ic => {
+        ic.setAttribute('data-lucide', isAnswered ? 'check-circle-2' : 'circle');
+        ic.className = `peer-row-icon w-3.5 h-3.5 ${isAnswered ? 'text-emerald-500' : 'text-slate-300'}`;
+        ic.dataset.qkey = qkey; ic.dataset.target = justAnsweredTarget;
+    });
+    lucide.createIcons();
+    // 진행도 뱃지
+    const badge = document.querySelector(`.peer-progress[data-qkey="${qkey}"]`);
+    if (!badge) return;
+    const total = parseInt(badge.dataset.total) || (me.teamMembers || []).length;
+    const answers = currentAnswers[qkey] || {};
+    const members = me.teamMembers || [];
+    const answered = members.filter(m => {
+        const v = answers[m.studentName];
+        return v !== undefined && v !== null && v !== '';
+    }).length;
+    const isText = badge.textContent.includes('작성');
+    badge.textContent = `${answered} / ${total}명 ${isText ? '작성됨' : '평가됨'}`;
+    badge.className = `peer-progress text-[10px] font-bold ${answered === total ? 'text-emerald-600 bg-emerald-100' : 'text-amber-600 bg-amber-100'} px-2 py-0.5 rounded-full`;
+    badge.dataset.qkey = qkey; badge.dataset.total = total;
+}
+
+async function submitForm() {
+    if (!currentSurvey) return;
+    // 필수 체크
+    for (const q of currentSurvey.questions) {
+        if (q.required) {
+            const a = currentAnswers[q.questionKey];
+            if (a === undefined || a === null || a === '' || (Array.isArray(a) && !a.length)) {
+                showToast(`필수 항목 미응답: ${q.text}`, 'warn');
+                return;
+            }
+            // peer_* : 모든 팀원에 대해 응답 필요
+            if (q.type && q.type.startsWith('peer_')) {
+                const members = me.teamMembers || [];
+                if (members.length && typeof a === 'object' && !Array.isArray(a)) {
+                    const missing = members.filter(m => {
+                        const v = a[m.studentName];
+                        return v === undefined || v === null || v === '';
+                    });
+                    if (missing.length) {
+                        showToast(`'${q.text}': ${missing.length}명의 팀원 응답이 누락됨`, 'warn');
+                        return;
+                    }
+                }
+            }
+        }
+    }
+    $('submit-btn').disabled = true;
+    try {
+        await api('submitResponse', {
+            surveyKey:   currentSurvey.surveyKey,
+            subjectKey:  me.subjectKey,
+            teamName:    me.teamName,
+            studentName: me.studentName,
+            studentId:   me.studentId,
+            answersJson: JSON.stringify(currentAnswers)
+        }, 'POST');
+        if (isGradedSurvey(currentSurvey)) { showQuizResult(); }
+        else { showToast('✓ 응답 제출 완료. 감사합니다!'); setTimeout(backToList, 1000); }
+    } catch(e) {
+        showToast(e.message, 'err');
+    } finally {
+        $('submit-btn').disabled = false;
+    }
+}
+
+
+/* ── 자가진단(quiz) 클라이언트 채점 — 정답/해설은 문항 설명의 [정답]/[해설]/[허용] 마커에서 읽음 (quiz patch v2) ── */
+function quizMeta(desc){
+  desc = String(desc==null?'':desc);
+  function grab(tag){ var m = desc.match(new RegExp('\\['+tag+'\\]\\s*([^\\n\\[]*)')); return m ? m[1].trim() : ''; }
+  return { ans: grab('정답'), accept: grab('허용'), explain: grab('해설') };
+}
+function stripQuizMarkers(desc){
+  return String(desc==null?'':desc).replace(/\[(정답|해설|허용)\][^\n]*/g,'').replace(/\n{2,}/g,'\n').trim();
+}
+function isGradedSurvey(s){
+  return !!(s && Array.isArray(s.questions) && s.questions.some(function(q){ return /\[정답\]/.test(q.description||''); }));
+}
+function normShort(v){
+  return String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,'').replace(/[.,!?;:·]+$/,'');
+}
+function isCorrect(q, ans){
+  var m = quizMeta(q.description); if(!m.ans) return null;
+  if(q.type==='multiple'){
+    var a=(Array.isArray(ans)?ans:[]).map(String).sort();
+    var k=m.ans.split(/[,，·]/).map(function(x){return x.trim();}).filter(Boolean).sort();
+    return a.length===k.length && a.every(function(v,i){return v===k[i];});
+  }
+  if(q.type==='short'){
+    var list=[m.ans].concat(m.accept?m.accept.split(/[,，]/):[]).map(normShort);
+    return list.includes(normShort(ans));
+  }
+  return String(ans)===String(m.ans);
+}
+function showQuizResult(){
+  var qs=currentSurvey.questions||[], total=0, correct=0, html='';
+  qs.forEach(function(q,i){
+    var ans=currentAnswers[q.questionKey];
+    var ok=isCorrect(q,ans);
+    if(ok===null) return;
+    total++; if(ok) correct++;
+    var m=quizMeta(q.description);
+    var myAns=Array.isArray(ans)?ans.join(', '):(ans==null?'(미응답)':ans);
+    html += '<div class="border '+(ok?'border-emerald-200 bg-emerald-50/50':'border-rose-200 bg-rose-50/50')+' rounded-xl p-3">'
+      + '<p class="text-sm font-bold text-slate-800 mb-1">'+(i+1)+'. '+escapeHtml(q.text)+'</p>'
+      + '<p class="text-xs '+(ok?'text-emerald-700':'text-rose-700')+' font-bold mb-1">'+(ok?'✓ 정답':'✗ 오답')+' · 내 답: '+escapeHtml(myAns)+'</p>'
+      + (ok?'':'<p class="text-xs text-slate-700">정답: <b>'+escapeHtml(m.ans)+'</b></p>')
+      + (m.explain?'<p class="text-[11px] text-slate-500 mt-1 whitespace-pre-line">💡 '+escapeHtml(m.explain)+'</p>':'')
+      + '</div>';
+  });
+  var pct=total?Math.round(correct/total*100):0;
+  document.getElementById('result-score').textContent = correct+' / '+total+'  ('+pct+'%)';
+  document.getElementById('result-sub').textContent = '응시가 이수로 인정됩니다 · 점수는 등급에 반영되지 않습니다(형성평가).';
+  document.getElementById('result-list').innerHTML = html;
+  document.getElementById('step-form').classList.add('hidden');
+  document.getElementById('step-list').classList.add('hidden');
+  document.getElementById('step-result').classList.remove('hidden');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+
+/* ── 3중 통합 시스템 안내 토글 ── */
+function toggleIhelp() {
+    const panel = $('ihelp-panel');
+    const chev  = $('ihelp-chevron');
+    const isHidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !isHidden);
+    if (chev) chev.style.transform = isHidden ? 'rotate(180deg)' : '';
+    if (isHidden) lucide.createIcons();
+}
+
+/* ── INIT ── */
+lucide.createIcons();
+loadSubjects();
+const saved = sessionStorage.getItem('me');
+if (saved) {
+    try {
+        const m = JSON.parse(saved);
+        const wait = setInterval(() => {
+            if (subjects.length) {
+                clearInterval(wait);
+                $('year-sel').value = String(m.year); onYearChange();
+                setTimeout(() => {
+                    $('semester-sel').value = String(m.semester); onSemesterChange();
+                    setTimeout(() => {
+                        $('subject-sel').value = m.subjectKey;
+                        onSubjectChange().then(() => {
+                            $('team-sel').value = m.teamName;
+                            $('auth-name').value = m.studentName;
+                            $('auth-id').value = m.studentId;
+                            me = m;
+                            onLoginSuccess();
+                        });
+                    }, 60);
+                }, 60);
+            }
+        }, 60);
+    } catch(e) {}
+}
+['auth-name','auth-id'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') login(); }));
+</script>
+</body>
+</html>
