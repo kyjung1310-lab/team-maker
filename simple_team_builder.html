@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>간편 조편성기</title>
+  <style>
+    :root {
+      --bg:#f4f6fb; --card:#fff; --line:#e3e8f2; --text:#172033; --muted:#69758c;
+      --primary:#5657e6; --primary-dark:#4546cb; --soft:#eef0ff; --success:#0f9f6e;
+      --danger:#dc4c64; --shadow:0 14px 36px rgba(28,39,76,.08);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif; }
+    button,select,input { font:inherit; }
+    button { cursor:pointer; }
+    .hidden { display:none !important; }
+    .login-screen { min-height:100vh; display:grid; place-items:center; padding:24px; background:linear-gradient(145deg,#f5f6ff,#edf5ff); }
+    .login-card { width:min(420px,100%); background:#fff; border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); padding:32px; }
+    .logo { width:52px; height:52px; border-radius:16px; display:grid; place-items:center; color:#fff; background:linear-gradient(145deg,#6164ef,#4748d4); font-size:26px; box-shadow:0 10px 22px rgba(86,87,230,.28); }
+    h1,h2,p { margin:0; }
+    .login-card h1 { margin-top:18px; font-size:24px; }
+    .login-card p { margin-top:8px; color:var(--muted); font-size:14px; line-height:1.55; }
+    .login-form { display:grid; gap:12px; margin-top:26px; }
+    label { color:var(--muted); font-size:12px; font-weight:700; }
+    input,select { width:100%; min-height:46px; border:1px solid var(--line); border-radius:13px; background:#fff; color:var(--text); padding:0 14px; outline:none; transition:.18s; }
+    input:focus,select:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(86,87,230,.10); }
+    .primary { min-height:46px; border:0; border-radius:13px; padding:0 18px; background:var(--primary); color:#fff; font-weight:800; transition:.18s; }
+    .primary:hover { background:var(--primary-dark); transform:translateY(-1px); }
+    .primary:disabled { opacity:.55; cursor:wait; transform:none; }
+    .secondary { min-height:40px; border:1px solid #cfd5e4; border-radius:11px; padding:0 14px; background:#fff; color:var(--text); font-size:12px; font-weight:800; }
+    .secondary:hover { border-color:var(--primary); color:var(--primary); }
+    .secondary:disabled { opacity:.45; cursor:not-allowed; }
+    .error { min-height:20px; color:var(--danger); font-size:12px; font-weight:700; }
+    header { height:72px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 24px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .brand .logo { width:42px; height:42px; border-radius:13px; font-size:20px; box-shadow:none; }
+    .brand h1 { font-size:18px; }
+    .brand p { margin-top:3px; color:var(--muted); font-size:11px; }
+    .header-actions { display:flex; align-items:center; gap:8px; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .chip { border:1px solid var(--line); border-radius:999px; background:#f8f9fc; color:var(--muted); padding:8px 12px; font-size:12px; font-weight:700; white-space:nowrap; }
+    .link-btn { border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--muted); padding:8px 11px; font-size:12px; font-weight:700; text-decoration:none; }
+    main { width:min(1240px,calc(100% - 32px)); margin:28px auto 56px; }
+    .controls { background:var(--card); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); padding:22px; }
+    .section-title { display:flex; align-items:center; gap:9px; font-size:15px; font-weight:850; }
+    .section-title span { width:28px; height:28px; display:grid; place-items:center; background:var(--soft); color:var(--primary); border-radius:9px; }
+    .control-grid { display:grid; grid-template-columns:1.1fr 1.5fr .8fr auto; gap:14px; align-items:end; }
+    .field { display:grid; gap:7px; min-width:0; }
+    .make-btn { min-width:150px; }
+    .summary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+    .summary-text { color:var(--muted); font-size:13px; }
+    .summary-text strong { color:var(--primary); }
+    .result-head { display:flex; align-items:end; justify-content:space-between; gap:14px; margin:26px 2px 14px; }
+    .result-head h2 { font-size:18px; }
+    .result-head p { margin-top:5px; color:var(--muted); font-size:12px; }
+    .empty { min-height:260px; display:grid; place-items:center; text-align:center; background:#fff; border:1px dashed #cfd6e5; border-radius:20px; color:var(--muted); padding:30px; }
+    .empty-icon { width:54px; height:54px; display:grid; place-items:center; border-radius:17px; background:var(--soft); color:var(--primary); font-size:25px; margin:0 auto 12px; }
+    .empty strong { display:block; color:var(--text); font-size:15px; margin-bottom:6px; }
+    .teams { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .team-card { background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 8px 24px rgba(28,39,76,.05); transition:.18s; }
+    .team-title { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:linear-gradient(135deg,#f0f1ff,#f8f9ff); border-bottom:1px solid var(--line); }
+    .team-title strong { color:var(--primary); font-size:14px; }
+    .team-title span { color:var(--muted); font-size:11px; font-weight:700; }
+    .members { list-style:none; min-height:62px; margin:0; padding:7px 14px 12px; transition:.18s; }
+    .members.drag-over { background:#eef0ff; box-shadow:inset 0 0 0 2px var(--primary); }
+    .member { display:flex; align-items:center; gap:10px; min-height:45px; padding:0 5px; border-bottom:1px solid #eef1f6; border-radius:9px; cursor:grab; transition:.15s; }
+    .member:last-child { border-bottom:0; }
+    .member:hover { background:#f7f8ff; }
+    .member.dragging { opacity:.35; }
+    .member.selected { background:#e8eaff; box-shadow:inset 0 0 0 2px var(--primary); }
+    .empty-team { min-height:43px; display:grid; place-items:center; color:#9aa5b8; font-size:11px; border:1px dashed #d7ddeb; border-radius:10px; }
+    .num { width:25px; height:25px; display:grid; place-items:center; flex:0 0 auto; border-radius:8px; background:#f2f4f9; color:var(--muted); font-size:11px; font-weight:800; }
+    .member-info { min-width:0; }
+    .member-name { font-size:13px; font-weight:800; }
+    .member-id { margin-top:2px; color:var(--muted); font-size:10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .modal-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:20px; background:rgba(17,24,39,.48); }
+    .modal { width:min(520px,100%); max-height:calc(100vh - 40px); overflow:auto; background:#fff; border-radius:22px; box-shadow:0 24px 70px rgba(0,0,0,.24); padding:24px; }
+    .modal h2 { font-size:19px; }
+    .modal-lead { margin-top:7px; color:var(--muted); font-size:13px; line-height:1.55; }
+    .sync-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:18px; }
+    .sync-item { padding:12px; border:1px solid var(--line); border-radius:12px; background:#f8f9fc; }
+    .sync-item span { display:block; color:var(--muted); font-size:10px; font-weight:750; }
+    .sync-item strong { display:block; margin-top:4px; font-size:14px; }
+    .sync-note { margin-top:12px; padding:12px 14px; border-radius:12px; background:#eef8f4; color:#246a53; font-size:12px; line-height:1.6; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:20px; }
+    .toast { position:fixed; left:50%; bottom:24px; transform:translate(-50%,18px); opacity:0; pointer-events:none; z-index:30; background:#172033; color:#fff; border-radius:12px; padding:11px 16px; font-size:12px; font-weight:750; box-shadow:0 14px 30px rgba(0,0,0,.2); transition:.22s; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    @media (max-width:900px) { .control-grid { grid-template-columns:1fr 1fr; } .make-btn { width:100%; } .teams { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:620px) { header { height:auto; padding:14px 16px; align-items:flex-start; } .control-grid { grid-template-columns:1fr; } .summary { align-items:flex-start; flex-direction:column; } .teams { grid-template-columns:1fr; } main { width:min(100% - 22px,1240px); margin-top:16px; } .controls { padding:17px; } .chip { padding:7px 9px; } }
+  </style>
+</head>
+<body>
+  <section id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="logo">▦</div>
+      <h1>간편 조편성기</h1>
+      <p>학기와 수업을 선택하고 버튼 한 번으로 무작위 팀을 만듭니다.</p>
+      <div class="login-form">
+        <label for="password">관리자 비밀번호</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="비밀번호 입력">
+        <button id="login-btn" class="primary" type="button">로그인</button>
+        <div id="login-error" class="error" role="alert"></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="app" class="hidden">
+    <header>
+      <div class="brand">
+        <div class="logo">▦</div>
+        <div><h1>간편 조편성기</h1></div>
+      </div>
+      <div class="header-actions">
+        <span id="total-chip" class="chip">총원 0명</span>
+        <a class="link-btn" href="./index.html">학생 추가·제거</a>
+        <button id="logout-btn" class="link-btn" type="button">로그아웃</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="controls" aria-labelledby="control-title">
+        <h2 id="control-title" class="sr-only">수업 선택과 조편성</h2>
+        <div class="control-grid">
+          <div class="field"><label for="semester-select">학기</label><select id="semester-select"></select></div>
+          <div class="field"><label for="subject-select">과목</label><select id="subject-select"></select></div>
+          <div class="field">
+            <label for="team-size">팀당 인원</label>
+            <select id="team-size">
+              <option value="2">2명</option><option value="3">3명</option><option value="4" selected>4명</option>
+              <option value="5">5명</option><option value="6">6명</option><option value="7">7명</option><option value="8">8명</option>
+            </select>
+          </div>
+          <button id="make-btn" class="primary make-btn" type="button" disabled>조편성하기</button>
+        </div>
+        <div class="summary">
+          <p id="roster-summary" class="summary-text">과목 명단을 불러오는 중입니다.</p>
+        </div>
+      </section>
+
+      <div class="result-head">
+        <div><h2>조편성 결과</h2><p id="result-summary">학기와 과목을 선택한 뒤 조편성하기를 누르세요.</p></div>
+        <button id="save-btn" class="secondary" type="button" disabled>결과 저장</button>
+      </div>
+      <section id="empty-result" class="empty">
+        <div><div class="empty-icon">↻</div><strong>아직 편성된 팀이 없습니다</strong><span>버튼을 누를 때마다 새롭게 섞어 편성합니다.</span></div>
+      </section>
+      <section id="teams" class="teams hidden" aria-live="polite"></section>
+    </main>
+  </div>
+  <div id="sync-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="sync-title">
+    <div class="modal">
+      <h2 id="sync-title">서버 저장 전 확인</h2>
+      <p class="modal-lead">아래 내용을 확인한 뒤 승인하면 실제 수업 데이터가 현행화됩니다.</p>
+      <div class="sync-summary">
+        <div class="sync-item"><span>대상 학기</span><strong id="sync-semester">-</strong></div>
+        <div class="sync-item"><span>대상 과목</span><strong id="sync-subject">-</strong></div>
+        <div class="sync-item"><span>학생 수</span><strong id="sync-total">0명</strong></div>
+        <div class="sync-item"><span>예상 변경</span><strong id="sync-counts">변경 0명</strong></div>
+      </div>
+      <div id="sync-method" class="sync-note"></div>
+      <div class="modal-actions">
+        <button id="sync-cancel-btn" class="secondary" type="button">취소</button>
+        <button id="sync-confirm-btn" class="primary" type="button">승인하고 서버 저장</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+    const APPS_URL = 'https://script.google.com/macros/s/AKfycbw9k-9lYg9GivdUEG6pPODPxP5S4B5tONDT3q33GcO50vMAbymQ1v60O6xZA9m626KwUw/exec';
+    const TOKEN_KEY = 'admin_token';
+    const TOKEN_AT_KEY = 'admin_token_at';
+    const TOKEN_TTL = 4 * 60 * 60 * 1000;
+    let token = '';
+    let subjects = [];
+    let roster = [];
+    let currentTeams = [];
+    let draggedStudentUid = '';
+    let selectedStudentUid = '';
+    let pendingSync = null;
+    let toastTimer = null;
+
+    const $ = id => document.getElementById(id);
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+    async function api(action, params = {}) {
+      const url = new URL(APPS_URL);
+      url.searchParams.set('action', action);
+      Object.entries(params).forEach(([key,value]) => url.searchParams.set(key, value));
+      const response = await fetch(url.toString(), {method:'GET', redirect:'follow'});
+      const json = await response.json();
+      if (!json.ok) throw new Error(json.error || '서버 오류가 발생했습니다');
+      return json.data;
+    }
+
+    async function apiPost(action, params = {}) {
+      const body = new URLSearchParams({action});
+      Object.entries(params).forEach(([key,value]) => body.set(key, value));
+      const response = await fetch(APPS_URL, {
+        method:'POST',
+        redirect:'follow',
+        headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+        body:body.toString()
+      });
+      const json = await response.json();
+      if (!json.ok) throw new Error(json.error || '서버 오류가 발생했습니다');
+      return json.data;
+    }
+
+    function showToast(message) {
+      $('toast').textContent = message;
+      $('toast').classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => $('toast').classList.remove('show'), 2200);
+    }
+
+    function secureRandom() {
+      if (window.crypto && window.crypto.getRandomValues) {
+        const data = new Uint32Array(1);
+        window.crypto.getRandomValues(data);
+        return data[0] / 4294967296;
+      }
+      return Math.random();
+    }
+
+    function buildTeams(students, teamSize, rng = secureRandom) {
+      const size = Math.max(2, Math.min(8, Number(teamSize) || 4));
+      const shuffled = students.slice();
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      if (!shuffled.length) return [];
+      const teamCount = Math.ceil(shuffled.length / size);
+      const teams = Array.from({length:teamCount}, () => []);
+      shuffled.forEach((student,index) => teams[index % teamCount].push(student));
+      return teams;
+    }
+
+    function moveStudentBetweenTeams(teams, studentUid, targetIndex) {
+      const next = teams.map(team => team.slice());
+      if (!studentUid || targetIndex < 0 || targetIndex >= next.length) return next;
+      const sourceIndex = next.findIndex(team => team.some(student => student.uid === studentUid));
+      if (sourceIndex < 0 || sourceIndex === targetIndex) return next;
+      const studentIndex = next[sourceIndex].findIndex(student => student.uid === studentUid);
+      const [student] = next[sourceIndex].splice(studentIndex, 1);
+      next[targetIndex].push(student);
+      return next;
+    }
+
+    function periodKey(subject) { return `${Number(subject.year)}-${Number(subject.semester)}`; }
+    function periodLabel(subject) { return `${Number(subject.year)}학년도 ${Number(subject.semester)}학기`; }
+
+    async function loadSubjects() {
+      subjects = (await api('getSubjects')).slice().sort((a,b) => Number(b.year)-Number(a.year) || Number(b.semester)-Number(a.semester) || String(a.subjectName).localeCompare(String(b.subjectName),'ko'));
+      if (!subjects.length) throw new Error('등록된 과목이 없습니다');
+      const periods = [...new Map(subjects.map(subject => [periodKey(subject), periodLabel(subject)])).entries()];
+      $('semester-select').innerHTML = periods.map(([key,label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`).join('');
+      await onSemesterChange();
+    }
+
+    async function onSemesterChange() {
+      const selectedPeriod = $('semester-select').value;
+      const candidates = subjects.filter(subject => periodKey(subject) === selectedPeriod);
+      $('subject-select').innerHTML = candidates.map(subject => `<option value="${escapeHtml(subject.subjectKey)}">${escapeHtml(subject.subjectName)}</option>`).join('');
+      await loadRoster();
+    }
+
+    async function loadRoster() {
+      const subjectKey = $('subject-select').value;
+      roster = [];
+      $('make-btn').disabled = true;
+      $('total-chip').textContent = '총원 0명';
+      $('roster-summary').textContent = '학생 명단을 불러오는 중입니다.';
+      clearResult();
+      if (!subjectKey) return;
+      try {
+        const data = await api('adminGetRoster', {token, subjectKey});
+        const seen = new Set();
+        roster = (Array.isArray(data.students) ? data.students : []).filter(student => {
+          const name = String(student.studentName || '').trim();
+          const id = String(student.studentId || '').trim();
+          const key = `${id}|${name}`;
+          if (!name || !id || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }).map((student,index) => ({uid:`student-${index + 1}`, studentName:String(student.studentName).trim(), studentId:String(student.studentId).trim()}));
+        $('total-chip').textContent = `총원 ${roster.length}명`;
+        $('roster-summary').innerHTML = roster.length
+          ? `<strong>${escapeHtml(data.subjectName)}</strong> 학생 ${roster.length}명을 준비했습니다.`
+          : `<strong>${escapeHtml(data.subjectName)}</strong>에 등록된 학생이 없습니다.`;
+        $('make-btn').disabled = roster.length === 0;
+      } catch (error) {
+        $('roster-summary').textContent = error.message;
+        showToast(error.message);
+      }
+    }
+
+    function clearResult() {
+      currentTeams = [];
+      draggedStudentUid = '';
+      selectedStudentUid = '';
+      pendingSync = null;
+      $('sync-modal').classList.add('hidden');
+      $('teams').innerHTML = '';
+      $('teams').classList.add('hidden');
+      $('empty-result').classList.remove('hidden');
+      $('save-btn').disabled = true;
+      $('result-summary').textContent = '학기와 과목을 선택한 뒤 조편성하기를 누르세요.';
+    }
+
+    function renderTeams() {
+      const teamSize = Number($('team-size').value);
+      $('teams').innerHTML = currentTeams.map((team,index) => `
+        <article class="team-card" data-team-index="${index}">
+          <div class="team-title"><strong>${index + 1}조</strong><span>${team.length}명</span></div>
+          <ol class="members" data-team-index="${index}" aria-label="${index + 1}조 학생 이동 영역">
+            ${team.map((student,memberIndex) => `
+              <li class="member${selectedStudentUid === student.uid ? ' selected' : ''}" draggable="true" data-student-uid="${escapeHtml(student.uid)}" tabindex="0" role="button" aria-pressed="${selectedStudentUid === student.uid}"><span class="num">${memberIndex + 1}</span><div class="member-info">
+                <div class="member-name">${escapeHtml(student.studentName)}</div>
+                <div class="member-id">${escapeHtml(student.studentId)}</div>
+              </div></li>`).join('') || '<li class="empty-team">여기에 학생 놓기</li>'}
+          </ol>
+        </article>`).join('');
+      $('empty-result').classList.add('hidden');
+      $('teams').classList.remove('hidden');
+      $('save-btn').disabled = false;
+      $('result-summary').textContent = `${currentTeams.length}개 팀 · 기준 ${teamSize}명 · 학생을 끌어서 이동할 수 있습니다.`;
+    }
+
+    function makeTeams() {
+      if (!roster.length) return showToast('편성할 학생 명단이 없습니다');
+      currentTeams = buildTeams(roster, Number($('team-size').value));
+      selectedStudentUid = '';
+      renderTeams();
+      showToast(`${currentTeams.length}개 팀으로 편성했습니다`);
+    }
+
+    function moveStudent(studentUid, targetIndex) {
+      const sourceIndex = currentTeams.findIndex(team => team.some(student => student.uid === studentUid));
+      if (sourceIndex < 0 || sourceIndex === targetIndex) return;
+      currentTeams = moveStudentBetweenTeams(currentTeams, studentUid, targetIndex);
+      selectedStudentUid = '';
+      renderTeams();
+      showToast(`${sourceIndex + 1}조 → ${targetIndex + 1}조로 이동했습니다`);
+    }
+
+    function buildTeamAssignments(teams) {
+      return teams.flatMap((team,teamIndex) => team.map(student => ({
+        studentName:student.studentName,
+        studentId:student.studentId,
+        teamName:`${teamIndex + 1}팀`
+      })));
+    }
+
+    function closeSyncModal() {
+      pendingSync = null;
+      $('sync-modal').classList.add('hidden');
+      $('sync-confirm-btn').disabled = false;
+      $('sync-confirm-btn').textContent = '승인하고 서버 저장';
+    }
+
+    async function saveResult() {
+      if (!currentTeams.length) return showToast('저장할 조편성 결과가 없습니다');
+      const semester = $('semester-select').options[$('semester-select').selectedIndex]?.textContent?.trim() || '';
+      const subject = $('subject-select').options[$('subject-select').selectedIndex]?.textContent?.trim() || '';
+      const subjectKey = $('subject-select').value;
+      const students = buildTeamAssignments(currentTeams);
+      $('save-btn').disabled = true;
+      $('save-btn').textContent = '확인 중…';
+      try {
+        const capabilities = await api('adminGetTeamSyncCapabilities', {token});
+        if (!capabilities || capabilities.teamsOnly !== true || capabilities.backupBeforeWrite !== true) {
+          throw new Error('안전 저장 백엔드 업데이트가 필요합니다');
+        }
+        const preview = await apiPost('adminApplyRoster', {
+          token,
+          subjectKey,
+          payload:JSON.stringify({students}),
+          mode:'teamsOnlyPreview',
+          actor:'simple-team-builder'
+        });
+        pendingSync = {subjectKey, students, preview};
+        $('sync-semester').textContent = semester;
+        $('sync-subject').textContent = subject;
+        $('sync-total').textContent = `${preview.total}명`;
+        $('sync-counts').textContent = `추가 ${preview.added} · 변경 ${preview.changed} · 제거 ${preview.removed}`;
+        $('sync-method').innerHTML = `<strong>등록 방식</strong><br>${escapeHtml(preview.method)}<br><strong>기존 데이터 보존</strong><br>${escapeHtml(preview.preservation)}<br>영향 예상: 과제 ${preview.totalAffectedSubs}건 · 설문 응답 ${preview.totalAffectedResps}건`;
+        $('sync-modal').classList.remove('hidden');
+        $('sync-confirm-btn').focus();
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        $('save-btn').disabled = false;
+        $('save-btn').textContent = '서버 저장';
+      }
+    }
+
+    async function confirmSync() {
+      if (!pendingSync) return;
+      const sync = pendingSync;
+      $('sync-confirm-btn').disabled = true;
+      $('sync-confirm-btn').textContent = '저장 중…';
+      try {
+        const result = await apiPost('adminApplyRoster', {
+          token,
+          subjectKey:sync.subjectKey,
+          payload:JSON.stringify({students:sync.students}),
+          mode:'teamsOnly',
+          expectedVersion:sync.preview.version,
+          actor:'simple-team-builder'
+        });
+        const readBack = await api('adminGetRoster', {token, subjectKey:sync.subjectKey});
+        const actual = new Map((readBack.students || []).map(student => [`${String(student.studentName).trim()}|${String(student.studentId).trim()}`, String(student.teamName || '').trim()]));
+        const mismatch = sync.students.some(student => actual.get(`${student.studentName}|${student.studentId}`) !== student.teamName);
+        if (mismatch || actual.size !== sync.students.length) throw new Error('저장은 완료됐지만 재조회 결과가 일치하지 않습니다. 상세 조편성기에서 확인하세요');
+        closeSyncModal();
+        $('result-summary').textContent = `서버 저장 완료 · ${result.updated}명 변경 · 학생 추가·제거 없음`;
+        showToast(`실제 수업 데이터 ${result.total}명을 현행화했습니다`);
+      } catch (error) {
+        $('sync-confirm-btn').disabled = false;
+        $('sync-confirm-btn').textContent = '다시 승인하고 서버 저장';
+        showToast(error.message);
+      }
+    }
+
+    async function login() {
+      const password = $('password').value.trim();
+      if (!password) { $('login-error').textContent = '비밀번호를 입력하세요.'; return; }
+      $('login-btn').disabled = true;
+      $('login-error').textContent = '';
+      try {
+        const result = await apiPost('adminLogin', {password});
+        token = result.token;
+        sessionStorage.setItem(TOKEN_KEY, token);
+        sessionStorage.setItem(TOKEN_AT_KEY, String(Date.now()));
+        $('password').value = '';
+        await enterApp();
+      } catch (error) {
+        $('login-error').textContent = error.message;
+      } finally {
+        $('login-btn').disabled = false;
+      }
+    }
+
+    async function enterApp() {
+      $('login-screen').classList.add('hidden');
+      $('app').classList.remove('hidden');
+      try { await loadSubjects(); }
+      catch (error) { $('roster-summary').textContent = error.message; showToast(error.message); }
+    }
+
+    function logout() {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_AT_KEY);
+      location.reload();
+    }
+
+    $('login-btn').addEventListener('click', login);
+    $('password').addEventListener('keydown', event => { if (event.key === 'Enter') login(); });
+    $('logout-btn').addEventListener('click', logout);
+    $('semester-select').addEventListener('change', onSemesterChange);
+    $('subject-select').addEventListener('change', loadRoster);
+    $('make-btn').addEventListener('click', makeTeams);
+    $('save-btn').addEventListener('click', saveResult);
+    $('sync-cancel-btn').addEventListener('click', closeSyncModal);
+    $('sync-confirm-btn').addEventListener('click', confirmSync);
+    $('team-size').addEventListener('change', () => { if (roster.length && !$('teams').classList.contains('hidden')) makeTeams(); });
+    $('teams').addEventListener('dragstart', event => {
+      const member = event.target.closest('.member[data-student-uid]');
+      if (!member) return;
+      draggedStudentUid = member.dataset.studentUid;
+      member.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedStudentUid);
+    });
+    $('teams').addEventListener('dragover', event => {
+      const target = event.target.closest('.members[data-team-index]');
+      if (!target) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.members.drag-over').forEach(el => el.classList.remove('drag-over'));
+      target.classList.add('drag-over');
+    });
+    $('teams').addEventListener('drop', event => {
+      const target = event.target.closest('.members[data-team-index]');
+      if (!target) return;
+      event.preventDefault();
+      const studentUid = event.dataTransfer.getData('text/plain') || draggedStudentUid;
+      moveStudent(studentUid, Number(target.dataset.teamIndex));
+    });
+    $('teams').addEventListener('dragend', () => {
+      draggedStudentUid = '';
+      document.querySelectorAll('.member.dragging').forEach(el => el.classList.remove('dragging'));
+      document.querySelectorAll('.members.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+    $('teams').addEventListener('click', event => {
+      const member = event.target.closest('.member[data-student-uid]');
+      if (member) {
+        selectedStudentUid = selectedStudentUid === member.dataset.studentUid ? '' : member.dataset.studentUid;
+        renderTeams();
+        if (selectedStudentUid) showToast('학생을 선택했습니다. 이동할 팀을 누르세요');
+        return;
+      }
+      const team = event.target.closest('.team-card[data-team-index]');
+      if (team && selectedStudentUid) moveStudent(selectedStudentUid, Number(team.dataset.teamIndex));
+    });
+
+    token = sessionStorage.getItem(TOKEN_KEY) || '';
+    const tokenAt = Number(sessionStorage.getItem(TOKEN_AT_KEY) || 0);
+    if (token && tokenAt && Date.now() - tokenAt < TOKEN_TTL) enterApp();
+    else { sessionStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_AT_KEY); setTimeout(() => $('password').focus(), 100); }
+  </script>
+</body>
+</html>
